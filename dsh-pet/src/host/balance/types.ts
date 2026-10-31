@@ -147,6 +147,15 @@ export interface MoneyBalance {
 }
 
 /**
+ * 今日已用：本地按天记账（见 ./daily），单位与余额同源——money 是币种，points 是积分单位。
+ * amount 是观测到的减少量之和，充值不计；没有上一次读数的单位不会出现在 items 里。
+ */
+export interface DailySpend {
+  date: string;
+  items: { unit: string; amount: number }[];
+}
+
+/**
  * 积分/点数余额（points 形态）：total 与接口一致，不做换算、不重算。
  * unit 只是数字后缀，不参与计算；full 是档位基准，缺省不折算、不播档位动画。
  */
@@ -172,8 +181,8 @@ export interface AccountBalanceSnapshot {
 /** 成功结果：shape 是展示形态，provider 是实际取数的服务商；client 与 host 同构使用。 */
 export type BalanceSuccess =
   | { ok: true; provider: string; shape: 'windows'; data: WindowsUsage }
-  | { ok: true; provider: string; shape: 'money'; data: MoneyBalance }
-  | { ok: true; provider: string; shape: 'points'; data: PointsBalance }
+  | { ok: true; provider: string; shape: 'money'; data: MoneyBalance; today?: DailySpend }
+  | { ok: true; provider: string; shape: 'points'; data: PointsBalance; today?: DailySpend }
   | { ok: true; provider: string; shape: 'custom'; data: CustomBalance };
 
 /**

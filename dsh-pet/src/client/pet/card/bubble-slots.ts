@@ -2,7 +2,7 @@
  * 气泡单槽：余额、说话、工作状态三种气泡的显隐、停留计时与优先级选择。
  * 不负责何时点亮与动画联动：tick 判定、抽动画、打日志都在 PetCard；也不负责外观，哑组件在 client/bubble.ts。
  * 依赖注入的 react 与两个气泡组件；三个停留计时器都归本模块清理。
- * 不变量：同一时刻只渲染一个气泡，优先级依次为终态任务、说话、余额、非终态任务。
+ * 不变量：同一时刻只渲染一个气泡，优先级依次为待办、用户点出来的余额、终态任务、说话、自动余额、非终态任务。
  * @module dsh-pet/src/client/pet/card/bubble-slots
  */
 import { balancePageCount as balancePageCountOf, type BalanceState } from '../../../shared/balance/index.ts';
@@ -33,6 +33,13 @@ export interface BubbleSlotInput {
   whisperText: string | null;
   /** 余额气泡是否点亮。 */
   balanceOn: boolean;
+  /**
+   * 这一轮余额气泡是否由用户主动点出来（点桌宠本体）。
+   *
+   * 与 `balanceManual` 不同：那个是「宿主这次写入是手动触发的」，也会被右键菜单与 /balance 命令点亮；
+   * 这个是「用户刚刚点了宠物、正在等这一眼」，所以它要压过此刻正挂着的说话与任务气泡。
+   */
+  balanceForced: boolean;
   /** 余额数据是否已拉到；null 表示尚未拉到。 */
   balanceAvailable: boolean;
   /** 配置是否启用余额。 */
@@ -44,7 +51,8 @@ export interface BubbleSlotInput {
 /**
  * 决定当前挂哪个气泡。
  *
- * 终态任务只活 10s，所以不让位；非终态常驻，让位 10s 没有损失。
+ * 终态任务只活 10s，所以默认不让位；非终态常驻，让位 10s 没有损失。
+ * 例外是「用户点出来的余额气泡」：那是刚刚主动要的一眼，压过说话与任务气泡（待办面板仍独占）。
  *
  * @param input - 三种气泡的显隐与开关。
  * @returns 命中的槽位；都不成立时为 `none`。
@@ -52,6 +60,9 @@ export interface BubbleSlotInput {
 export function decideBubbleSlot(input: BubbleSlotInput): BubbleSlot {
   // 面板是用户主动打开的窗口：它占槽时其余气泡一律让位，关掉后按原规则恢复。
   if (input.todoOn) return 'todo';
+  // 点宠物点出来的余额：顶掉此前正显示的说话 / 终态 / 非终态任务气泡。
+  // 条件里不放 balanceEnabled：能走到这里的请求一定是用户手动要的，开关只管自动来源。
+  if (input.balanceForced && input.balanceOn && input.balanceAvailable) return 'balance';
   if (input.workTerminal && input.workOn && input.workText && input.workStatusEnabled) return 'work-terminal';
   if (input.whisperOn && input.whisperText) return 'whisper';
   if (input.balanceOn && input.balanceAvailable && (input.balanceEnabled || input.balanceManual)) return 'balance';
@@ -131,8 +142,13 @@ export interface BubbleSlotsInput {
 
 /** 气泡单槽对外的读写面。 */
 export interface BubbleSlots {
-  /** 点亮余额气泡并回到第一页，重置停留计时。 */
-  showBalance(): void;
+  /**
+   * 点亮余额气泡并回到第一页，重置停留计时。
+   *
+   * @param options.force - 这次是用户点宠物点出来的：要顶掉此刻正挂着的说话 / 任务气泡。
+   *   缺省（自动轮询、右键菜单）不动这个标记，避免刷新结果到达时把刚顶起来的余额又让回去。
+   */
+  showBalance(options?: { force?: boolean }): void;
   /** 点余额气泡翻页，并重置停留计时。 */
   cycleBalance(): void;
   /** 点亮说话气泡；duration 为 0 时不改动当前气泡，undefined 用默认时长。 */
@@ -174,6 +190,8 @@ export function createBubbleSlots(rt: BubbleSlotsRuntime, components: BubbleComp
     // 余额气泡：显隐与展开页。
     const [balanceOn, setBalanceOn] = useState(false);
     const [balancePage, setBalancePage] = useState(0);
+    // 这一轮是不是用户点出来的：只由 showBalance({force:true}) 置真，气泡收起时清掉。
+    const [balanceForced, setBalanceForced] = useState(false);
     const balanceTimerRef = useRef<number | null>(null);
     // 说话气泡：显隐、文本与配图（池内名与完整地址二选一）。
     const [whisperOn, setWhisperOn] = useState(false);
@@ -206,13 +224,11 @@ export function createBubbleSlots(rt: BubbleSlotsRuntime, components: BubbleComp
     /** 重置余额气泡的停留计时；重复触发先清旧定时器，否则旧的会提前收起。 */
     const armBalanceTimeout = () => {
       if (balanceTimerRef.current !== null) window.clearTimeout(balanceTimerRef.current);
-      balanceTimerRef.current = window.setTimeout(() => setBalanceOn(false), BUBBLE_DURATION_MS);
-    };
-
-    const showBalance = () => {
-      setBalancePage(0); // 新一轮查询从第一页开始。
-      setBalanceOn(true);
-      armBalanceTimeout();
+      balanceTimerRef.current = window.setTimeout(() => {
+        setBalanceOn(false);
+        // 收起即恢复原优先级：还在进行中的非终态任务气泡会自己回来。
+        setBalanceForced(false);
+      }, BUBBLE_DURATION_MS);
     };
 
     const cycleBalance = () => {
@@ -258,6 +274,25 @@ export function createBubbleSlots(rt: BubbleSlotsRuntime, components: BubbleComp
       setWorkText(null);
     };
 
+    /**
+     * 点亮余额气泡。
+     *
+     * force 是「用户刚点了宠物」：这一眼要压过此刻正挂着的说话与终态任务气泡，并且把被顶掉的那两个
+     * 真的收起来——它们是「说过的一句话」「一次性通知」，十秒后再冒回来只会让人困惑。
+     * 非终态任务不在此列：那是常驻状态，且本来就在余额之下。
+     */
+    const showBalance = (options?: { force?: boolean }) => {
+      setBalancePage(0); // 新一轮查询从第一页开始。
+      // force 只在明确传 true 时置真：刷新结果到达时的普通 showBalance 不能把刚顶起来的余额又让回去。
+      if (options?.force === true) {
+        setBalanceForced(true);
+        if (whisperOn) clearWhisper();
+        if (workOn && input.workTerminal) hideWork();
+      }
+      setBalanceOn(true);
+      armBalanceTimeout();
+    };
+
     const showTodo = (): void => setTodoOn(true);
     const hideTodo = (): void => setTodoOn(false);
     const toggleTodo = (): void => setTodoOn((on) => !on);
@@ -272,6 +307,7 @@ export function createBubbleSlots(rt: BubbleSlotsRuntime, components: BubbleComp
         whisperOn,
         whisperText,
         balanceOn,
+        balanceForced,
         balanceAvailable: input.balance !== null,
         balanceEnabled: input.balanceEnabled,
         balanceManual: input.balanceManual,

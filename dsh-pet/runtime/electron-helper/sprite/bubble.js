@@ -68,8 +68,20 @@ Object.assign(PetSprite.prototype, {
     const whisperOn = !!(this.whisperOn && this.whisperView);
     const balanceOn = !!(this.bubbleOn && this.balanceView);
     const workTerminal = this.workState === 'success' || this.workState === 'error';
+    // 用户点宠物点出来的余额气泡顶掉此刻的说话与任务气泡（含终态任务）：那是刚主动要的一眼。
+    // 待办面板在桌面端是独立浮层，不参与这个槽位。
     const slot =
-      workTerminal && workOn ? 'work' : whisperOn ? 'whisper' : balanceOn ? 'balance' : workOn ? 'work' : 'none';
+      this.balanceForced && balanceOn
+        ? 'balance'
+        : workTerminal && workOn
+          ? 'work'
+          : whisperOn
+            ? 'whisper'
+            : balanceOn
+              ? 'balance'
+              : workOn
+                ? 'work'
+                : 'none';
     // 配图两种形态二选一：url 用完整地址，image 按素材根拼表情包路径；样式/class 共用。
     const whisperImg =
       slot === 'whisper'
@@ -134,16 +146,27 @@ Object.assign(PetSprite.prototype, {
       const rows = this.balanceState ? S.balancePageView(this.balanceState, this.balanceViewIndex) : this.balanceView;
       const hasTier = rows.some((r) => r.role === 'tier');
       if (hasTier) {
-        // deepseek 余额单行：余额（峰/谷）¥x — 档位字着色
+        // deepseek 余额单行：余额（峰/谷）¥x — 档位字着色。
+        // 附注行（今日已用这类 note、sub 与错误说明）另起一行：档位那一行是单行 flex，
+        // 把附注塞进去会连读成「余额 ¥8.79 今日已用 ¥1.50」一整串（与浏览器同口径）。
         const line = document.createElement('div');
         line.className = 'pet-bub-row';
         for (const r of rows) {
+          if (r.role !== 'label' && r.role !== 'tier') continue;
           const span = document.createElement('span');
           if (r.role === 'tier') span.className = 'pet-bub-tier pet-bub-tier-' + r.tier;
           span.textContent = r.text;
           line.appendChild(span);
         }
         this.bubble.appendChild(line);
+        for (const r of rows) {
+          if (r.role !== 'sub' && r.role !== 'error' && r.role !== 'note') continue;
+          const note = document.createElement('div');
+          note.className =
+            'pet-bub-row' + (r.role === 'sub' ? ' pet-bub-sub' : r.role === 'error' ? ' pet-bub-err' : '');
+          note.textContent = r.text;
+          this.bubble.appendChild(note);
+        }
       } else {
         for (const r of rows) {
           // 展开态一行 = 一个窗口：窗口名 + 进度条 + 已用百分比 + 重置倒计时，四段 flex 同行，条吃剩余宽度。

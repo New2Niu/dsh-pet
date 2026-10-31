@@ -19,6 +19,7 @@ import { derivePetMetrics, petRootStyle, petStageStyle } from '../motion/geometr
 import { makePlaybackReporter } from '../playback-report.ts';
 import { createAnimationFlow } from './animation-flow.ts';
 import { createBubbleSlots } from './bubble-slots.ts';
+import { requestBalanceRefresh } from './balance-refresh.ts';
 import { createCardAnimation } from './animation.ts';
 import { createCardDrag } from './drag.ts';
 import { createCardEntry, type CardEntry } from './entry.ts';
@@ -312,6 +313,13 @@ export function createCardRuntime(rt: PetRuntime) {
         // 入睡过渡里被点：这次入睡作废，按普通点击处理（挤压 + 音效 + 点击回应），不再播「起来」
         if (phase === 'start') void postAction(ROUTE_PATH + '/wake?pet=' + encodeURIComponent(cfg.id));
         drag.onClick();
+        // 点击 = 看余额：先用最近一次快照弹气泡（点一下立刻有反馈），再节流请宿主补一次刷新。
+        // force：用户刚点的一眼要压过此刻正挂着的说话 / 任务气泡（待办面板仍独占）。
+        // 只对启用了余额的宠物生效——关掉这只宠物的余额，就不该点一下也去打服务商接口。
+        if (cfg.balanceEnabled) {
+          hub.bubbles.showBalance({ force: true });
+          requestBalanceRefresh();
+        }
       },
       onContextMenu: entry.handleContextMenu,
       onPointerDown: drag.onPointerDown,

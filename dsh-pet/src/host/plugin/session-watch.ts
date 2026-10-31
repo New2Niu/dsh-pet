@@ -5,6 +5,7 @@
  * @module dsh-pet/src/host/plugin/session-watch
  */
 import { GOAL_UPDATE_TOOL, currentTaskFromTodo, goalUpdateAction, reduceWorkStatus } from '../work-status.ts';
+import { addUsage, turnCostText, type TurnTokenCounts } from '../pricing.ts';
 import { toolDetailFromEvent } from '../tool-detail.ts';
 import {
   agentErrorFrame,
@@ -152,6 +153,9 @@ export function registerSessionWatch(deps: SessionWatchInput): void {
   // 消费 turn/start、user/message（goal 续跑轮判定）、tool/call、tool/result、approval/asked、
   // turn/end、todo/write（只更新任务详情文案，不切档位）。纯监听不调用模型。
   ctx.effect(() => {
+    // 本轮的 token 用量：该轮每个 assistant/message 的 usage 累加，turn/end 时结算成金额。
+    // 只用于算钱，不驱动任何档位；turn/start 与 turn/end 都会清掉，不会跨轮残留。
+    const turnTokens = new Map<string, TurnTokenCounts>();
     const dispose = ctx.on('session/event', (session: unknown, event: unknown) => {
       const type = (event as { type?: string } | null)?.type;
       if (!type) return;
@@ -160,6 +164,13 @@ export function registerSessionWatch(deps: SessionWatchInput): void {
           (session as { id?: unknown } | null)?.id ??
           'unknown',
       );
+      if (type === 'assistant/message') {
+        // 一步一条 usage（输入/输出/缓存命中各计各的），跨 step 求和才是一整轮的花费。
+        const usage = (event as { data?: { usage?: unknown } } | null)?.data?.usage;
+        const next = addUsage(turnTokens.get(sessionId), usage);
+        if (next) turnTokens.set(sessionId, next);
+        return; // 不驱动档位（气泡文案由 turn/end 统一给）
+      }
       if (type === 'todo/write') {
         // 任务详情文案只写该会话的条目（state/task 同源，不可能串会话）。会话没有活动条目
         // （已空闲/已清理）→ 不动：不会被展示，写进去只会成为一条幽灵文案。
@@ -188,6 +199,7 @@ export function registerSessionWatch(deps: SessionWatchInput): void {
       }
       if (type === 'turn/start') {
         turnFlags.set(sessionId, { goalRound: false, closing: null }); // 新一轮：清 turn 级标志
+        turnTokens.delete(sessionId); // 上一轮的用量不带进这一轮（漏删会把两轮的钱加在一起）
         // 新一轮也开始新的任务上下文：清掉上一轮留下的任务详情文案（issue #59），否则它会一直挂着。
         // 代价：goal 续跑这类多轮任务，每轮开头会回落一瞬档位文案，直到本轮（通常在开头几步内）
         // 再写一次 todo 清单。
@@ -217,6 +229,7 @@ export function registerSessionWatch(deps: SessionWatchInput): void {
         // 落到其他活跃会话，防止回合被打断后永久卡在上一档；其他事件的 null 是「不关心」，忽略。
         if (type === 'turn/end') {
           turnFlags.delete(sessionId);
+          turnTokens.delete(sessionId); // 这一轮没有终态气泡，用量也别留着
           cancelTerminalCleanup(sessionId); // 条目都要清了，别留一个到点后无事可做的定时器
           lastTodoText.delete(sessionId); // 按会话记的两份缓存跟着会话一起消失（防泄漏）
           toolsInFlight.delete(sessionId);
@@ -242,6 +255,16 @@ export function registerSessionWatch(deps: SessionWatchInput): void {
       if (outcome?.keepWorking) next = 'working';
       const changed = workStatus.setState(sessionId, next, seq);
       if (outcome?.task !== undefined) workStatus.setTask(sessionId, outcome.task);
+      if (type === 'turn/end') {
+        // 结算本轮花费：只有终态挂金额，中途档不该显示上一笔；认不出价目就留 null（气泡少一句）。
+        const counts = turnTokens.get(sessionId);
+        turnTokens.delete(sessionId);
+        const cost =
+          (next === 'success' || next === 'error') && counts
+            ? turnCostText(counts, ctx.agentDefaultModel.currentSelection(), new Date())
+            : undefined;
+        workStatus.setCost(sessionId, cost ?? null);
+      }
       publishWorkStatus(); // 档位或文案变了 → 写 S（内容没变时它自己会短路，不产生多余写入）
       // 同会话同状态不重复更新（防刷屏）：写已经落定，这里只负责跳过终态清理的重排
       if (!changed) return;

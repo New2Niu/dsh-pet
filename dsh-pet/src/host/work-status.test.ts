@@ -219,3 +219,55 @@ describe('WorkStatusStore —— 按会话聚合与展示（issue #59）', () =>
     }
   });
 });
+
+describe('WorkStatusStore —— 本轮花费（终态气泡上那句「本轮 ¥x」）', () => {
+  test('终态写入金额，快照里带出来', () => {
+    const store = new WorkStatusStore();
+    assert.equal(store.snapshot().cost, null, '初始没有金额');
+    store.setState('s1', 'success', 1);
+    assert.equal(store.setCost('s1', '¥0.0021'), true);
+    assert.equal(store.snapshot().cost, '¥0.0021');
+  });
+
+  test('换档（新一轮从 thinking 起步）自动清掉上一笔金额', () => {
+    const store = new WorkStatusStore();
+    store.setState('s1', 'success', 1);
+    store.setCost('s1', '¥0.0021');
+    store.setState('s1', 'thinking', 2);
+    assert.equal(store.snapshot().cost, null, '「思考中」不该挂着上一轮的金额');
+  });
+
+  test('同档位重复写入保留金额：同一轮里后续事件不会把数字抹掉', () => {
+    const store = new WorkStatusStore();
+    store.setState('s1', 'success', 1);
+    store.setCost('s1', '¥0.0021');
+    store.setState('s1', 'success', 2); // 同档，seq 更大
+    assert.equal(store.snapshot().cost, '¥0.0021');
+  });
+
+  test('没有活动条目的会话写不进金额（防幽灵数字）', () => {
+    const store = new WorkStatusStore();
+    assert.equal(store.setCost('ghost', '¥1.00'), false);
+    assert.equal(store.snapshot().cost, null);
+  });
+
+  test('会话被清掉（回合结束清理）金额一起消失', () => {
+    const store = new WorkStatusStore();
+    store.setState('s1', 'success', 1);
+    store.setCost('s1', '¥0.0021');
+    store.clear('s1');
+    assert.equal(store.snapshot().cost, null);
+    assert.equal(store.snapshot().state, null);
+  });
+
+  test('多个会话：金额跟着被展示的那个会话走，不串台', () => {
+    const store = new WorkStatusStore();
+    store.setState('a', 'success', 1);
+    store.setCost('a', '¥0.0100');
+    store.setState('b', 'error', 2);
+    store.setCost('b', '¥0.0021');
+    // error 优先级高于 success → 展示 b
+    assert.equal(store.snapshot().state, 'error');
+    assert.equal(store.snapshot().cost, '¥0.0021');
+  });
+});

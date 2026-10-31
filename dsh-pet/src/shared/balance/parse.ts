@@ -7,7 +7,16 @@
  * @module dsh-pet/src/shared/balance/parse
  */
 
-import type { BalanceState, BalanceUsage, CustomNode, CustomTag, MoneyWalletView, RawBalanceResult } from './types.ts';
+import type {
+  BalanceState,
+  BalanceUsage,
+  CustomNode,
+  CustomTag,
+  DailySpend,
+  DailySpendItem,
+  MoneyWalletView,
+  RawBalanceResult,
+} from './types.ts';
 
 // 自定义气泡节点树的白名单：第三方交来的树是外部输入，解析层负责裁进「一个气泡能画出来」的
 // 范围，渲染器只画不再校验。
@@ -177,6 +186,30 @@ function parseUsage(raw: unknown): BalanceUsage | undefined | null {
 }
 
 /**
+ * 解析今日已用：缺省返回 undefined（还没观测到可比的两拍），出现但结构不认识返回 null。
+ *
+ * 坏条目逐条丢弃、一条都不剩就当没给——这一行只是附注，不值得为它让整拍余额不显示。
+ * 负数是记账层不该产出的形状，同样丢弃：今日已用只会有减少量。
+ */
+function parseToday(raw: unknown): DailySpend | undefined | null {
+  if (raw === undefined) return undefined;
+  if (!raw || typeof raw !== 'object') return null;
+  const t = raw as Record<string, unknown>;
+  if (!Array.isArray(t.items)) return null;
+  const items: DailySpendItem[] = [];
+  for (const item of t.items) {
+    if (!item || typeof item !== 'object') continue;
+    const it = item as Record<string, unknown>;
+    if (typeof it.unit !== 'string' || it.unit.length === 0) continue;
+    const amount = optNum(it.amount);
+    if (typeof amount !== 'number' || amount < 0) continue;
+    items.push({ unit: it.unit, amount });
+  }
+  if (items.length === 0) return undefined;
+  return { date: typeof t.date === 'string' ? t.date : '', items };
+}
+
+/**
  * 把 host 的余额原始响应（`sections.balance` 叶子）转成客户端视图。
  *
  * 形状非法或 shape 不认识返回 null，消费端据此跳过这一拍；这里不抛异常，理由见模块头。
@@ -257,12 +290,16 @@ export function toBalanceState(raw: unknown): BalanceState | null {
     }
     // 一个钱包都没有即认不出响应：host 侧空钱包是按 fetch-error 写的，走到这里说明结构坏了。
     if (wallets.length === 0) return null;
+    const today = parseToday(r.today);
+    // 今日已用出现但结构不认识：整拍跳过，不让一条坏附注混进气泡。
+    if (today === null) return null;
     return {
       provider,
       shape: 'money',
       ok: true,
       wallets,
       tier: d.tier === 'peak' || d.tier === 'idle' ? d.tier : undefined,
+      ...(today ? { today } : {}),
     };
   }
   if (r.shape === 'points') {
@@ -270,6 +307,8 @@ export function toBalanceState(raw: unknown): BalanceState | null {
     // full 缺省或为空串都表示没有基准，不参与档位折算，与 money 的 fullBalance 同口径。
     if (typeof d.unit !== 'string' || d.unit.length === 0) return null;
     if (typeof d.total !== 'string' || d.total.length === 0) return null;
+    const today = parseToday(r.today);
+    if (today === null) return null;
     return {
       provider,
       shape: 'points',
@@ -279,6 +318,7 @@ export function toBalanceState(raw: unknown): BalanceState | null {
         total: d.total,
         full: typeof d.full === 'string' && d.full.length > 0 ? d.full : undefined,
       },
+      ...(today ? { today } : {}),
     };
   }
   if (r.shape === 'custom') {

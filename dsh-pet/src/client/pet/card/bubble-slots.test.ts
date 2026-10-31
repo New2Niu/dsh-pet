@@ -19,6 +19,7 @@ function input(overrides: Partial<BubbleSlotInput> = {}): BubbleSlotInput {
     whisperOn: false,
     whisperText: null,
     balanceOn: false,
+    balanceForced: false,
     balanceAvailable: true,
     balanceEnabled: true,
     balanceManual: false,
@@ -97,6 +98,45 @@ describe('decideBubbleSlot —— 同一时刻只挂一个气泡', () => {
       }),
     );
     assert.equal(slot, 'todo');
+  });
+
+  test('用户点出来的余额压过说话与终态任务：刚主动要的一眼不被顶掉', () => {
+    assert.equal(
+      decideBubbleSlot(input({ balanceOn: true, balanceForced: true, whisperOn: true, whisperText: '在' })),
+      'balance',
+    );
+    assert.equal(
+      decideBubbleSlot(
+        input({
+          balanceOn: true,
+          balanceForced: true,
+          workTerminal: true,
+          workOn: true,
+          workText: '跑完了',
+          whisperOn: true,
+          whisperText: '在',
+        }),
+      ),
+      'balance',
+    );
+  });
+
+  test('点出来的余额仍然让位给待办面板：那是用户自己打开、还没关的窗口', () => {
+    assert.equal(decideBubbleSlot(input({ balanceOn: true, balanceForced: true, todoOn: true })), 'todo');
+  });
+
+  test('余额数据还没到（点太快）：仍按原优先级，说话气泡先留着', () => {
+    assert.equal(
+      decideBubbleSlot(
+        input({ balanceOn: true, balanceForced: true, balanceAvailable: false, whisperOn: true, whisperText: '在' }),
+      ),
+      'whisper',
+    );
+  });
+
+  test('余额气泡没点亮时，forced 标记不凭空占槽', () => {
+    assert.equal(decideBubbleSlot(input({ balanceForced: true, whisperOn: true, whisperText: '在' })), 'whisper');
+    assert.equal(decideBubbleSlot(input({ balanceForced: true })), 'none');
   });
 });
 

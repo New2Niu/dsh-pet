@@ -131,6 +131,8 @@ export function currentTaskFromTodo(event: {
 export interface WorkStatusSnapshot {
   state: HostWorkStatusState | null; // null = 尚无会话活动（空闲）
   task: string | null; // 当前任务详情（todo/write 提供，可 null）
+  /** 刚结束那一轮的花费（`¥0.0021`，见 pricing）；只在终态有值，认不出价目时为 null。 */
+  cost: string | null;
   ts: number; // 最近一次变化的时间戳（轮询侧据此检测变化）
 }
 
@@ -142,6 +144,8 @@ export interface SessionWorkEntry {
   seq: number;
   /** 任务详情文案；null = 该会话没有清单。 */
   task: string | null;
+  /** 该会话刚结束那一轮的花费文本；null = 没有（未结束 / 认不出价目 / 该轮无用量）。 */
+  cost: string | null;
 }
 
 /** 展示优先级：waiting > error > working > thinking > result > success。
@@ -187,7 +191,7 @@ export class WorkStatusStore {
 
   constructor() {
     this.sessions = new Map();
-    this.snap = { state: null, task: null, ts: 0 };
+    this.snap = { state: null, task: null, cost: null, ts: 0 };
   }
 
   /** 该会话当前是否有活动条目（决定 todo/write 是否还值得更新它的文案）。 */
@@ -209,7 +213,18 @@ export class WorkStatusStore {
   setState(sessionId: string, state: HostWorkStatusState, seq = 0): boolean {
     const prev = this.sessions.get(sessionId);
     if (prev?.state === state && prev.seq >= seq) return false;
-    this.sessions.set(sessionId, { state, seq, task: prev?.task ?? null });
+    // 换档就丢掉上一档的花费：新一轮从 thinking 起步，不能让上一轮的金额挂在「思考中」上。
+    const cost = prev?.state === state ? (prev.cost ?? null) : null;
+    this.sessions.set(sessionId, { state, seq, task: prev?.task ?? null, cost });
+    this.refresh();
+    return true;
+  }
+
+  /** 写该会话本轮的花费文本（null = 清空）；会话无活动条目 → 不动（它不会被展示）。 */
+  setCost(sessionId: string, cost: string | null): boolean {
+    const prev = this.sessions.get(sessionId);
+    if (!prev || (prev.cost ?? null) === cost) return false;
+    this.sessions.set(sessionId, { ...prev, cost });
     this.refresh();
     return true;
   }
@@ -235,14 +250,16 @@ export class WorkStatusStore {
     return this.snap;
   }
 
-  /** 重算展示：state 与 task 任一变化才更新 ts（轮询侧据此触发，两端都靠它刷新）。 */
+  /** 重算展示：state / task / cost 任一变化才更新 ts（轮询侧据此触发，两端都靠它刷新）。 */
   private refresh(): void {
     const best = pickDisplayed(this.sessions.values());
     const nextState = best?.state ?? null;
     const nextTask = best?.task ?? null;
-    if (nextState === this.snap.state && nextTask === this.snap.task) return;
+    const nextCost = best?.cost ?? null;
+    if (nextState === this.snap.state && nextTask === this.snap.task && nextCost === this.snap.cost) return;
     this.snap.state = nextState;
     this.snap.task = nextTask;
+    this.snap.cost = nextCost;
     this.snap.ts = Date.now();
   }
 }

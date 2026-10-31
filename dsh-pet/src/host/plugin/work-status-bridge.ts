@@ -30,7 +30,8 @@ export function createWorkStatusBridge(deps: WorkStatusBridgeInput) {
 
   const publishWorkStatus = (): void => {
     const snap = workStatus.snapshot();
-    const key = String(snap.state) + '\u0000' + String(snap.task);
+    // 花费也要进签名：只改金额（同档位同文案）时同样要写一拍，否则气泡停在旧金额上。
+    const key = String(snap.state) + '\u0000' + String(snap.task) + '\u0000' + String(snap.cost);
     if (key === publishedWork) return;
     // 抖动判定：只压 working → result 这一个方向（同档只换文案不算抖动，照常立即写；
     // 反向 result → working 立即写）
@@ -52,7 +53,13 @@ export function createWorkStatusBridge(deps: WorkStatusBridgeInput) {
     publishedWork = key;
     publishedState = snap.state;
     publishedWorkAt = Date.now();
-    state.writeSection('workStatus', { state: snap.state, task: snap.task });
+    // cost 缺省不写这个键：外部写入（POST /work-status）与没算出金额的终态都保持原有形状，
+    // 消费端「键在不在」就是「这轮有没有金额」。
+    state.writeSection('workStatus', {
+      state: snap.state,
+      task: snap.task,
+      ...(snap.cost ? { cost: snap.cost } : {}),
+    });
   };
 
   /** 停掉挂起的补写定时器（插件卸载时调用）。 */

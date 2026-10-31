@@ -33,8 +33,26 @@ function pointsRows(v: BalanceView): BalanceBubbleRow[] {
   return [{ role: 'label', text: '余额 ' + p.total + ' ' + p.unit }];
 }
 
+/**
+ * 一行「今日已用 20 积分」：本地按天记账的减少量，单位沿用数据带出的那个。
+ *
+ * 小数只在真有时才写出来（积分通常是整数）；没有这一项就不占行。
+ */
+function pointsTodayRows(v: BalanceView): BalanceBubbleRow[] {
+  const items = v.today?.items ?? [];
+  if (items.length === 0) return [];
+  const unit = v.points?.unit ?? '';
+  const amount = items
+    .map((i) => {
+      const n = Number.isInteger(i.amount) ? String(i.amount) : i.amount.toFixed(2);
+      return n + ' ' + (i.unit || unit);
+    })
+    .join('/');
+  return [{ role: 'note', text: '今日已用 ' + amount.trim() }];
+}
+
 /** points 形态的展示规则：百分比按积分基准折算，气泡只拼数字与单位。 */
 export const pointsHandler: ShapeHandler = {
   percent: pointsPercent,
-  rows: pointsRows,
+  rows: (v) => [...pointsRows(v), ...pointsTodayRows(v)],
 };

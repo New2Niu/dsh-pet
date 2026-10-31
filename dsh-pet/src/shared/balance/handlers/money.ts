@@ -49,8 +49,21 @@ function moneyRows(v: BalanceView): BalanceBubbleRow[] {
   ];
 }
 
+/**
+ * 一行「今日已用 ¥x.xx」：本地按天记账的减少量，CNY 优先、多币种以「/」分隔。
+ *
+ * 没有这一项（还没观测到可比的两拍）就不占行；金额统一两位小数，与余额串的精度口径一致。
+ */
+function moneyTodayRows(v: BalanceView): BalanceBubbleRow[] {
+  const items = v.today?.items ?? [];
+  if (items.length === 0) return [];
+  const visible = [...items].sort((a, b) => (a.unit === 'CNY' ? 0 : 1) - (b.unit === 'CNY' ? 0 : 1));
+  const amount = visible.map((i) => (i.unit === 'USD' ? '$' : '¥') + i.amount.toFixed(2)).join('/');
+  return [{ role: 'note', text: '今日已用 ' + amount }];
+}
+
 /** money 形态的展示规则：百分比按币种基准折算，收成一行业务气泡。 */
 export const moneyHandler: ShapeHandler = {
   percent: moneyPercent,
-  rows: moneyRows,
+  rows: (v) => [...moneyRows(v), ...moneyTodayRows(v)],
 };

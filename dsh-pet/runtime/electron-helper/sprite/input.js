@@ -395,6 +395,30 @@ Object.assign(PetSprite.prototype, {
     }
     // 点击音效与浏览器同位置：放在「按下已触发积分」的早退之后、点击动画判断之前
     playClickSound();
+    // 点击 = 看余额：先用上一次读数弹气泡（点一下立刻有反馈），再节流请宿主补一次刷新。
+    // 与浏览器同一套；关掉余额的宠物不因点击而查询——右键「查看余额」仍可手动查一次。
+    if (this.pet.balanceEnabled) {
+      // 用户点了宠物：这一眼要压过此刻正挂着的说话与任务气泡（待办在桌面端是独立浮层，不受影响）。
+      this.balanceForced = true;
+      // 被顶掉的说话与终态任务顺手收起来：都是一次性的一句话 / 通知，十秒后再冒回来只会让人困惑。
+      // 非终态任务保留：那是常驻状态，本来就在余额之下。
+      if (this.whisperOn) this.clearWhisper();
+      if (this.workOn && (this.workState === 'success' || this.workState === 'error')) {
+        if (this.workTimer !== null) window.clearTimeout(this.workTimer);
+        this.workTimer = null;
+        this.workOn = false;
+      }
+      // 优先用窗口级的最近一拍（本窗口只装一只宠物，它就是这只的最新读数）；
+      // 还没拉到过就退回这只宠物上一次展示过的那份。
+      const cached = balance || this.balanceState;
+      if (cached) this.showBalanceBubble(cached);
+      else this.renderBubble();
+      const now = Date.now();
+      if (now - lastBalanceClickAt >= BALANCE_CLICK_GAP_MS) {
+        lastBalanceClickAt = now;
+        S.postAction(BALANCE_URL).catch(() => {});
+      }
+    }
     if (!this.animations.clicks.length) return;
     this.pendingSquash = true; // 等新点击动画切到前台后 Q 弹（压新首帧，与浏览器一致）
     this.playOnce(S.pick(this.animations.clicks));

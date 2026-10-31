@@ -65,6 +65,13 @@ export interface RawBalanceResult {
   shape?: BalanceShape;
   reason?: string;
   message?: string;
+  /**
+   * money / points：今日已用（本地记账）。
+   *
+   * 与 `data` **平级**而不是塞在 data 里：它是宿主附加的观测结果，不属于任何服务商的取数载荷；
+   * host 侧 BalanceSuccess 的形状就是 `{ ok, provider, shape, data, today? }`。
+   */
+  today?: unknown;
   data?: {
     rolling?: unknown;
     weekly?: unknown;
@@ -114,6 +121,27 @@ export interface BalanceUsage {
   spentUsd: number;
 }
 
+/**
+ * 今日已用（本地按天记账）：宿主每次成功查到余额，就把相对上一次读数的减少量累加到当天。
+ *
+ * unit 与余额同源——money 是币种，points 是积分单位；amount 是观测到的减少量之和（充值不计）。
+ * 只对 money 与 points 出现：窗口百分比是额度占用，第三方自定义布局没有统一读数。
+ */
+export interface DailySpend {
+  /** 本地日期 YYYY-MM-DD；只用于排障，不上气泡 */
+  date: string;
+  /** 有键即「今天这个单位至少观测过两次」；没有上一次读数的单位不出现，不凭空报 0 */
+  items: DailySpendItem[];
+}
+
+/** 一个单位的今日已用。 */
+export interface DailySpendItem {
+  /** 币种（money）或积分单位（points） */
+  unit: string;
+  /** 今日累计减少量（正数；观测到但没有减少时为 0） */
+  amount: number;
+}
+
 /** 已解析的余额视图，供展示与档位计算使用 */
 export interface BalanceView {
   provider: string;
@@ -146,6 +174,8 @@ export interface BalanceView {
   tier?: PricingTier;
   /** points：积分或点数余额，单位只用于展示 */
   points?: PointsView;
+  /** money / points：今日已用（本地记账）；缺省表示还没观测到可比的两拍 */
+  today?: DailySpend;
   /** custom：第三方自定义气泡，只有该形态带这份数据 */
   custom?: CustomBalance;
 }
@@ -195,6 +225,16 @@ export interface WindowUsage {
 export type BalanceBubbleRow =
   | { role: 'label'; text: string }
   | { role: 'sub'; text: string }
+  | {
+      /**
+       * 附注行：正常字号、独立一行（例如「今日已用 ¥1.50」）。
+       *
+       * 与 sub 的区别是「重要程度」而非字号：sub 是错的详情、窗口明细的补充，缩到 0.75；
+       * 附注是用户主动想知道的一个数，缩放会把可读性削掉，也不该被档位段并进余额那一行。
+       */
+      role: 'note';
+      text: string;
+    }
   | { role: 'error'; text: string }
   | { role: 'tier'; tier: PricingTier; text: string }
   | {

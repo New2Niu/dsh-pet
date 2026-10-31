@@ -10,7 +10,10 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { PACKAGE_ROOT } from '../paths.ts';
 import { queryBalance } from '../balance/index.ts';
+import { BALANCE_DAILY_FILE_NAME, recordDailySpend } from '../balance/daily.ts';
 import { credentialRef } from '@deepseek-ai/dsh-credentials';
+import type { DailySpendObservation } from '../balance/daily.ts';
+import type { BalanceResult } from '../balance/index.ts';
 import type { ChatMemory } from './chat-memory.ts';
 import type { HostSetup } from './setup.ts';
 import type { HostContext } from './context.ts';
@@ -22,13 +25,14 @@ export type BalancePollInput = {
 } & Pick<HostSetup, 'configPaths'> &
   Pick<ChatMemory, 'getActivePetId'> &
   Pick<HostSetup, 'log'> &
-  Pick<HostSetup, 'state'>;
+  Pick<HostSetup, 'state'> &
+  Pick<HostSetup, 'userRoot'>;
 
 /**
  * 创建余额与周期。
  */
 export function createBalancePoll(deps: BalancePollInput) {
-  const { ctx, configPaths, getActivePetId, log, state } = deps;
+  const { ctx, configPaths, getActivePetId, log, state, userRoot } = deps;
   /** 当前生效宠物列表：成品配置拍平（合并器已保证 id 唯一、字段填满），命令与桌面模式共用。 */
   const effectivePetList = (): Record<string, unknown>[] => flattenPetList(readAllConfig(configPaths));
 
@@ -62,12 +66,43 @@ export function createBalancePoll(deps: BalancePollInput) {
     return { version, locale: 'zh-CN', timezoneOffsetSeconds: -new Date().getTimezoneOffset() * 60 };
   };
 
+  /** 今日已用的记账文件：与待办同一套落盘方式（插件用户数据根下的单个 JSON）。 */
+  const dailySpendFile = join(userRoot, BALANCE_DAILY_FILE_NAME);
+
+  /**
+   * 给成功结果挂上「今日已用」。
+   *
+   * 只有金额与积分有可比基线：窗口百分比是额度占用（会随重置回退），第三方自定义布局没有统一读数，
+   * 两者都不带这一项。记账本身失败只少这一行，不影响余额写入。
+   */
+  const withDailySpend = (result: BalanceResult): BalanceResult => {
+    if (!result.ok) return result;
+    let observation: DailySpendObservation;
+    if (result.shape === 'money') {
+      observation = {
+        provider: result.provider,
+        shape: 'money',
+        values: result.data.wallets.map((w) => ({ unit: w.currency, amount: Number(w.total) })),
+      };
+    } else if (result.shape === 'points') {
+      observation = {
+        provider: result.provider,
+        shape: 'points',
+        values: [{ unit: result.data.unit, amount: Number(result.data.total) }],
+      };
+    } else {
+      return result;
+    }
+    const today = recordDailySpend(dailySpendFile, observation, Date.now(), log);
+    return today === undefined ? result : { ...result, today };
+  };
+
   /**
    * 刷新余额并写入轮询状态：host 侧唯一的余额查询点，两端从 /state 读同一份结果。
    * 失败也写进状态（reason 区分 unsupported / credential-missing / fetch-error）：余额不可用要弹
    * 文字说明，不能静默；意外异常同样落成 fetch-error。
    *
-   * @param manual - 这次刷新是否由用户触发（/balance 命令、桌面「查看余额」菜单）；标记随数据写进
+   * @param manual - 这次刷新是否由用户触发（/balance 命令、桌面「查看余额」菜单、点击桌宠）；标记随数据写进
    *   叶子，前端据此决定余额不可用时是否必弹文字说明（周期刷新只在原因变化时弹一次）。
    */
   const refreshBalance = async (manual = false): Promise<void> => {
@@ -91,7 +126,7 @@ export function createBalancePoll(deps: BalancePollInput) {
           return account.getBalance(accountClientMetadata());
         },
       );
-      state.writeSection('balance', mark(result));
+      state.writeSection('balance', mark(withDailySpend(result)));
       // 失败也写 S（前端弹文字说明），日志同样留一条：否则「查了、失败了」与「根本没查」
       // 在文件里长得一模一样。成功用 info，失败用 warn（亮度不同，扫一眼就能分辨）。
       if (result.ok) {

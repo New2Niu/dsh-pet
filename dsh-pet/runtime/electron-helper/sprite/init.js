@@ -76,6 +76,9 @@ Object.assign(PetSprite.prototype, {
     this.balanceWrap = false; // true = 当前余额气泡是不可用的「文字说明」（多行，需换行变体）
     this.balanceState = null; // 最近一次余额读数（展开态按页现算窗口明细与用量；balanceView 只是收起态的行）
     this.balanceViewIndex = 0; // 当前页：点一下切下一页（windows 是收起 / 窗口明细 / 用量，有用量才有第三页；custom 是 views.length 页）
+    // 这一轮余额气泡是不是用户点宠物点出来的：置真后压过说话与任务气泡（待办在桌面端是独立面板，
+    // 不占这个槽）；气泡收起或换成文字说明时清掉。
+    this.balanceForced = false;
     this.balanceFadeTimer = null; // 展开/收起的淡出等待（250ms 后才换内容，避免硬切）
     this.prevTick = 0;
     // 说话（碎碎念/命令气泡/对话回复）：文本与配图由容器统一轮询 /state 后经 showWhisper 送进来。

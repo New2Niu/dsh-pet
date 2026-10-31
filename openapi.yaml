@@ -3333,8 +3333,8 @@ components:
         manual:
           type: boolean
           description: |
-            仅当本次写入是**手动触发**（`POST /balance`、`/balance` 命令、桌面「查看余额」菜单）
-            时出现。消费端据此决定"余额不可用时要不要必弹文字说明"。
+            仅当本次写入是**手动触发**（`POST /balance`、`/balance` 命令、桌面「查看余额」菜单、
+            点击桌宠）时出现。消费端据此决定"余额不可用时要不要必弹文字说明"。
         rolling:
           type: number
           description: opencode / commandcode：5h 滚动窗口用量（0-100）
@@ -3442,6 +3442,36 @@ components:
                 档位基准（同 unit 的数值）——余额 ≥ 该值视为未消耗。
                 缺省 = 没有基准，不参与百分比折算、不播档位动画（不替它猜一个）。
               example: "1000"
+        today:
+          type: object
+          description: |
+            money / points：今日已用（本地按天记账）。
+            宿主每次成功查到余额，就把「相对上一次读数的减少量」累加到当天：充值（余额上升）
+            不计成负消费，跨天清零；离上一次观测超过 12 小时才再查时重新取基线，不把停机期间
+            的花费算进今天。只对 money / points 出现——`windows` 与 `custom` 没有可比的统一读数。
+            首次观测到某个单位（还没有上一次读数）时它不会出现在 items 里：宁可这一行不显示，
+            也不报一个凭空来的 0。
+          required: [date, items]
+          properties:
+            date:
+              type: string
+              description: 本地日期（YYYY-MM-DD）；只用于排障，不上气泡
+              example: "2026-10-31"
+            items:
+              type: array
+              description: 每个观测单位一条；气泡拼成「今日已用 ¥1.50」（money）或「今日已用 20 积分」（points）
+              items:
+                type: object
+                required: [unit, amount]
+                properties:
+                  unit:
+                    type: string
+                    description: money 是币种代码（CNY / USD），points 是积分单位
+                    example: CNY
+                  amount:
+                    type: number
+                    description: 今日累计减少量（正数；观测到但没有减少时为 0）
+                    example: 1.5
 
     BalanceUnavailable:
       type: object
@@ -3499,6 +3529,16 @@ components:
           oneOf:
             - type: string
             - type: "null"
+        cost:
+          type: string
+          description: |
+            刚结束那一轮的**花费**（人民币，如 `¥0.0021`），只在终态（`success` / `error`）出现。
+
+            口径：宿主把该轮所有 `assistant/message` 事件的 `usage` 累加（输入未命中 / 缓存命中 /
+            输出分开计），按 DeepSeek 官方峰谷价目折算（见 `src/host/pricing.ts`，与余额气泡上的
+            「峰 / 谷」同一个判定）。**认不出服务商或模型时不写这个键**，气泡就少这一句——绝不报一个
+            编出来的金额；`POST /work-status` 这类外部写入同样不会带它。
+            金额格式：≥1 元两位小数，几厘钱最多四位（`¥0.0200` → `¥0.02`）。
 
     NotifyLeaf:
       type: object

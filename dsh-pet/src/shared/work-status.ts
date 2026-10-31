@@ -21,19 +21,41 @@ export const WORK_STATUS_INDEX: Record<WorkStatusState, number> = {
 };
 
 /** 工作状态快照（= /state 里 sections.workStatus 的 data，与宿主半侧的同构）。
- *  没有 ts：「变了没有」由叶子的 counter 承担；text 不在此——气泡文案由客户端读配置，宿主不生成。 */
+ *  没有 ts：「变了没有」由叶子的 counter 承担；档位文案不在此——客户端读配置，宿主不生成。 */
 export interface WorkStatusSnapshot {
   state: WorkStatusState | null; // null = 空闲
   task: string | null; // 当前任务详情（todo/write 提供，可 null）
+  /** 刚结束那一轮的花费（`¥0.0021`）：只有终态有值，认不出价目时为 null。 */
+  cost: string | null;
 }
 
 /** 快照解析：档位不认识 → 归一成 null（空闲）；形状非法 → null，消费端跳过这一拍。 */
 export function toWorkStatus(raw: unknown): WorkStatusSnapshot | null {
   if (!raw || typeof raw !== 'object') return null;
-  const r = raw as { state?: unknown; task?: unknown };
+  const r = raw as { state?: unknown; task?: unknown; cost?: unknown };
   const state: WorkStatusState | null =
     r.state === null || (typeof r.state === 'string' && (WORK_STATUS_STATES as readonly string[]).includes(r.state))
       ? (r.state as WorkStatusState | null)
       : null;
-  return { state, task: typeof r.task === 'string' ? r.task : null };
+  return {
+    state,
+    task: typeof r.task === 'string' ? r.task : null,
+    // 空串按「没有」处理：气泡不该出现「本轮 」后面什么都没有。
+    cost: typeof r.cost === 'string' && r.cost.length > 0 ? r.cost : null,
+  };
+}
+
+/**
+ * 工作气泡的最终文案：任务详情（或档位文案）之后追加本轮花费。
+ *
+ * 中间用「·」隔开，读起来是「改好了 index.ts · 本轮 ¥0.0021」；没有基础文案时只留「本轮 ¥0.0021」。
+ * 两端共用这一份：金额格式由宿主算好，客户端只负责拼句子。
+ *
+ * @param base - 任务详情或档位文案；null 表示这一档没有文案。
+ * @param cost - 宿主算好的花费文本（`¥0.0021`）；null 表示没有（未结算 / 认不出价目）。
+ * @returns 气泡文本；两者都没有时为 null（只播动画不弹气泡）。
+ */
+export function workBubbleText(base: string | null, cost: string | null): string | null {
+  if (!cost) return base;
+  return base ? base + ' · 本轮 ' + cost : '本轮 ' + cost;
 }

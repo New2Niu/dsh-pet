@@ -116,21 +116,34 @@ function injectBubbleCss(): void {
 function rowsToNodes(h: typeof jsx, rows: BalanceBubbleRow[]): ReactNode {
   // 含档位段时同一行内联渲染，峰/谷着色。
   if (rows.some((r) => r.role === 'tier')) {
-    return h('div', {
-      className: 'pet-bub-row',
-      children: rows.map((r, i) => {
-        // 进度条行不会与档位段同现。
-        if (r.role === 'quota') return null;
-        if (r.role === 'tier') {
-          return h('span', {
-            key: i,
-            className: 'pet-bub-tier pet-bub-tier-' + r.tier,
-            children: r.text,
-          });
-        }
-        return h('span', { key: i, children: r.text });
+    // 附注行（今日已用这类 note、错误说明与 sub）另起一行：档位那一行是单行 flex，
+    // 把附注塞进去会连读成「余额 ¥8.79 今日已用 ¥1.50」一整串。
+    const tail = rows.filter((r) => r.role === 'sub' || r.role === 'error' || r.role === 'note');
+    return [
+      h('div', {
+        key: 'tier',
+        className: 'pet-bub-row',
+        children: rows
+          .filter((r) => r.role === 'label' || r.role === 'tier')
+          .map((r, i) => {
+            if (r.role === 'tier') {
+              return h('span', {
+                key: i,
+                className: 'pet-bub-tier pet-bub-tier-' + r.tier,
+                children: r.text,
+              });
+            }
+            return h('span', { key: i, children: r.text });
+          }),
       }),
-    });
+      ...tail.map((r, i) =>
+        h('div', {
+          key: 'note-' + i,
+          className: 'pet-bub-row' + (r.role === 'sub' ? ' pet-bub-sub' : r.role === 'error' ? ' pet-bub-err' : ''),
+          children: r.text,
+        }),
+      ),
+    ];
   }
   // 其余每行一个块：label、sub、error、quota。
   return rows.map((r, i) => {

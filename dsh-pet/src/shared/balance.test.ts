@@ -790,3 +790,101 @@ describe('custom 形态 —— 第三方自定义气泡（节点树）', () => {
     );
   });
 });
+
+describe('today —— 今日已用（本地按天记账的附注行）', () => {
+  /** 一个带 today 的 money 状态。 */
+  const moneyWithToday = (items: { unit: string; amount: number }[]): BalanceState => ({
+    provider: 'deepseek-official',
+    shape: 'money',
+    ok: true,
+    wallets: [{ currency: 'CNY', total: '8.79', granted: '0.00', toppedUp: '8.79' }],
+    today: { date: '2026-10-31', items },
+  });
+
+  test('money：余额行之后补一行「今日已用 ¥x.xx」，金额两位小数', () => {
+    assert.deepEqual(balanceBubbleView(moneyWithToday([{ unit: 'CNY', amount: 1.5 }])), [
+      { role: 'label', text: '余额 ¥8.79' },
+      { role: 'note', text: '今日已用 ¥1.50' },
+    ]);
+  });
+
+  test('money：多币种按 CNY 优先、以「/」分隔', () => {
+    const rows = balanceBubbleView(
+      moneyWithToday([
+        { unit: 'USD', amount: 0.1 },
+        { unit: 'CNY', amount: 2 },
+      ]),
+    );
+    assert.equal(rows[1]?.text, '今日已用 ¥2.00/$0.10');
+  });
+
+  test('money：还没有可比的两拍（items 为空）时不占行', () => {
+    assert.deepEqual(balanceBubbleView(moneyWithToday([])), [{ role: 'label', text: '余额 ¥8.79' }]);
+  });
+
+  test('points：单位跟着数据走，整数不写小数', () => {
+    const rows = balanceBubbleView({
+      provider: 'local-gateway',
+      shape: 'points',
+      ok: true,
+      points: { unit: '积分', total: '800' },
+      today: { date: '2026-10-31', items: [{ unit: '积分', amount: 20 }] },
+    });
+    assert.deepEqual(rows, [
+      { role: 'label', text: '余额 800 积分' },
+      { role: 'note', text: '今日已用 20 积分' },
+    ]);
+  });
+
+  test('解析：today 缺省就不带这个键（页数/行数判定只看键在不在）', () => {
+    const state = toBalanceState({
+      ok: true,
+      provider: 'deepseek-official',
+      shape: 'money',
+      data: { wallets: [{ currency: 'CNY', total: '1.00', granted: '0', toppedUp: '1.00' }] },
+    });
+    assert.ok(state && state.ok);
+    assert.equal('today' in state, false);
+  });
+
+  test('解析：坏条目逐条丢弃，一条不剩就当没给；负数是记账层不该产出的形状', () => {
+    const state = toBalanceState({
+      ok: true,
+      provider: 'deepseek-official',
+      shape: 'money',
+      data: { wallets: [{ currency: 'CNY', total: '1.00', granted: '0', toppedUp: '1.00' }] },
+      today: {
+        date: '2026-10-31',
+        items: [
+          { unit: 'CNY', amount: 1.25 },
+          { unit: '', amount: 1 },
+          { unit: 'USD', amount: -1 },
+          { unit: 'JPY', amount: 'nope' },
+        ],
+      },
+    });
+    assert.ok(state && state.ok);
+    assert.deepEqual(state.today?.items, [{ unit: 'CNY', amount: 1.25 }]);
+
+    const empty = toBalanceState({
+      ok: true,
+      provider: 'deepseek-official',
+      shape: 'money',
+      data: { wallets: [{ currency: 'CNY', total: '1.00', granted: '0', toppedUp: '1.00' }] },
+      today: { date: '2026-10-31', items: [{ unit: 'CNY', amount: 'nope' }] },
+    });
+    assert.ok(empty && empty.ok);
+    assert.equal('today' in empty, false, '一条可用的都没有 → 当作没给');
+  });
+
+  test('解析：today 结构不认识（不是对象 / items 不是数组）整拍跳过，不画半张气泡', () => {
+    const base = {
+      ok: true,
+      provider: 'deepseek-official',
+      shape: 'money',
+      data: { wallets: [{ currency: 'CNY', total: '1.00', granted: '0', toppedUp: '1.00' }] },
+    };
+    assert.equal(toBalanceState({ ...base, today: 'oops' }), null);
+    assert.equal(toBalanceState({ ...base, today: { items: 'oops' } }), null);
+  });
+});
