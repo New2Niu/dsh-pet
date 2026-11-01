@@ -8,7 +8,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { MAX_SESSIONS, MAX_TURNS_PER_SESSION, TurnCostStore } from './turn-costs.ts';
+import { MAX_SESSIONS, MAX_TURNS_PER_SESSION, RETENTION_MS, TurnCostStore } from './turn-costs.ts';
 
 describe('TurnCostStore —— 记金额', () => {
   test('按会话 + 轮次记，快照是普通对象', () => {
@@ -76,5 +76,96 @@ describe('TurnCostStore —— 有上限（塞进每秒 /state 的东西不能�
     assert.equal(sessions.length, MAX_SESSIONS);
     assert.ok(sessions.includes('s1'), '最近写过的会话要保留');
     assert.ok(!sessions.includes('s2'), '最久没写过的会话被淘汰');
+  });
+});
+
+describe('TurnCostStore —— 磁盘副本（dump / hydrate）', () => {
+  test('dump 带上每个会话的 at，hydrate 原样还原', () => {
+    const store = new TurnCostStore();
+    store.record('s1', '3', '¥0.0021');
+    store.record('s1', '4', '¥1.50');
+    const dump = store.dump();
+    assert.deepEqual(dump.s1?.costs, { '3': '¥0.0021', '4': '¥1.50' });
+    assert.equal(typeof dump.s1?.at, 'number', '落盘要带写入时刻，淘汰与留存都靠它');
+
+    const restored = new TurnCostStore();
+    restored.hydrate(dump, dump.s1?.at);
+    assert.deepEqual(restored.snapshot(), { s1: { '3': '¥0.0021', '4': '¥1.50' } });
+  });
+
+  test('坏数据逐条丢：非对象、空 costs、空轮次、空金额、非字符串', () => {
+    const store = new TurnCostStore();
+    const now = 1_000_000_000_000;
+    store.hydrate(
+      {
+        good: { at: now, costs: { '3': '¥0.0021' } },
+        noCosts: { at: now, costs: 'nope' },
+        empty: { at: now, costs: {} },
+        dirty: { at: now, costs: { '': '¥1', '5': '', '6': 42, '7': null } },
+        scalar: 7,
+      },
+      now,
+    );
+    assert.deepEqual(store.snapshot(), { good: { '3': '¥0.0021' } });
+  });
+
+  test('非对象 / 数组 / null → 不动（保持空账本）', () => {
+    for (const raw of [undefined, null, 7, 'x', [], true]) {
+      const store = new TurnCostStore();
+      store.hydrate(raw);
+      assert.deepEqual(store.snapshot(), {});
+    }
+  });
+
+  test('超过留存天数的会话在载入时丢掉，其余保留', () => {
+    const now = 1_000_000_000_000;
+    const store = new TurnCostStore();
+    store.hydrate(
+      {
+        fresh: { at: now - 1000, costs: { '1': '¥0.1' } },
+        stale: { at: now - RETENTION_MS - 1, costs: { '1': '¥0.2' } },
+        // 刚过线一天都算过期：判定是「超过留存窗口」
+        edge: { at: now - RETENTION_MS, costs: { '1': '¥0.3' } },
+      },
+      now,
+    );
+    assert.deepEqual(Object.keys(store.snapshot()).sort(), ['edge', 'fresh']);
+  });
+
+  test('at 缺失或坏掉按「刚写过」处理：不因为一个坏字段丢掉整份账', () => {
+    const now = 1_000_000_000_000;
+    const store = new TurnCostStore();
+    store.hydrate({ s1: { costs: { '1': '¥0.1' } }, s2: { at: 'x', costs: { '1': '¥0.2' } } }, now);
+    assert.deepEqual(store.snapshot(), { s1: { '1': '¥0.1' }, s2: { '1': '¥0.2' } });
+  });
+
+  test('会话数与每会话轮次在载入时就被裁到位', () => {
+    const now = 1_000_000_000_000;
+    const raw: Record<string, { at: number; costs: Record<string, string> }> = {};
+    for (let i = 1; i <= MAX_SESSIONS + 3; i += 1) {
+      raw['s' + i] = { at: now - (MAX_SESSIONS + 3 - i) * 1000, costs: { '1': '¥0.1' } };
+    }
+    const manyTurns: Record<string, string> = {};
+    for (let turn = 1; turn <= MAX_TURNS_PER_SESSION + 5; turn += 1) manyTurns[String(turn)] = '¥0.1';
+    raw.big = { at: now, costs: manyTurns };
+
+    const store = new TurnCostStore();
+    store.hydrate(raw, now);
+    const sessions = store.snapshot();
+    assert.equal(Object.keys(sessions).length, MAX_SESSIONS, '多出来的会话按 at 淘汰');
+    assert.ok(!('s1' in sessions), '最老的会话先丢');
+    assert.ok('big' in sessions, '最新的会话保留');
+    const turns = Object.keys(sessions.big ?? {});
+    assert.equal(turns.length, MAX_TURNS_PER_SESSION);
+    assert.equal(turns.includes('1'), false, '最早的轮次被裁掉');
+  });
+
+  test('载入期间已经记进来的新一轮不会被磁盘上的旧账盖掉', () => {
+    const now = 1_000_000_000_000;
+    const store = new TurnCostStore();
+    // 模拟「load 还在读文件时，这一轮已经结束并记账」
+    store.record('s1', '9', '¥9.99');
+    store.hydrate({ s1: { at: now - 5000, costs: { '3': '¥0.0021' } } }, now);
+    assert.deepEqual(store.snapshot(), { s1: { '3': '¥0.0021', '9': '¥9.99' } });
   });
 });

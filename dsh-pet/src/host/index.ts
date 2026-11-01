@@ -19,6 +19,9 @@ import { createSessionNotify } from './plugin/session-notify.ts';
 import { createPetLookup } from './plugin/pet-lookup.ts';
 import { createDownloadReport } from './plugin/download-report.ts';
 import { createWorkStatusBridge } from './plugin/work-status-bridge.ts';
+import { createTurnCostPersistence } from './plugin/turn-cost-persistence.ts';
+import { TURN_COST_FILE_NAME } from './plugin/turn-cost-file.ts';
+import { TurnCostStore } from './turn-costs.ts';
 import { registerTodoReminders } from './plugin/todo-reminders.ts';
 import { createVoiceService } from './voice/speak.ts';
 import { createHearService } from './voice/hear.ts';
@@ -50,6 +53,23 @@ export function apply(ctx: any): void {
   } = setup;
   const workStatusBridge = createWorkStatusBridge({ state, workStatus });
   const { publishWorkStatus, publishTurnCosts, stopWorkStatusFlush } = workStatusBridge;
+
+  // 每轮花费账本：内存 + 磁盘副本（落在插件用户数据根，与 todos.json / memory.json 同一个目录）。
+  // 为什么要有磁盘副本：账本只靠实时 `turn/end` 记账，而 DSH 重启后把会话日志当 seed 载入、
+  // 不会重放给观察者——不落盘就等于重启即清零。载入 → hydrate → 补写一拍 /state，
+  // 每轮结算后节流落盘，卸载时写最后一次。详见 turn-costs.ts 与 turn-cost-persistence.ts。
+  const turnCosts = new TurnCostStore();
+  const turnCostPersistence = createTurnCostPersistence({
+    file: join(userRoot, TURN_COST_FILE_NAME),
+    log,
+    store: turnCosts,
+    publish: publishTurnCosts,
+  });
+  void turnCostPersistence.load().catch((error: unknown) => {
+    log.warn?.(
+      '[dsh-pet] 每轮花费账本载入失败（本次按空账本跑）：' + (error instanceof Error ? error.message : String(error)),
+    );
+  });
   const downloadReport = createDownloadReport({
     EXTERNAL_WORK_SESSION,
     nextExternalWorkSeq,
@@ -118,7 +138,8 @@ export function apply(ctx: any): void {
     lastTodoText,
     lastReplyText,
     notifyActivityTimers,
-    publishTurnCosts,
+    // 走持久化层的出口：写 /state 一模一样，外加一个防抖落盘（替掉裸的 publishTurnCosts）
+    publishTurnCosts: turnCostPersistence.publishAndSave,
     publishWorkStatus,
     pushNotifyFrame,
     scheduleCompletionNotify,
@@ -126,6 +147,7 @@ export function apply(ctx: any): void {
     terminalTimers,
     toolsInFlight,
     turnFlags,
+    turnCosts,
     workStatus,
   });
 
@@ -172,6 +194,7 @@ export function apply(ctx: any): void {
     state,
     stopDownloadSlotTimer,
     stopHelper,
+    stopTurnCostWrites: turnCostPersistence.dispose,
     stopWorkStatusFlush,
   });
 

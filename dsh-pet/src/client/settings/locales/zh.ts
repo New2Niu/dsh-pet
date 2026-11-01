@@ -19,6 +19,9 @@ export const zh = {
   'cmd.chat': '对话',
   'cmd.pet': '桌宠',
   'cmd.balance': '余额',
+  // 对话界面每条回复下方的「本轮 ¥0.0021」小行。
+  'cost.label': '本轮',
+  'cost.hint': '本轮花费：按 DeepSeek 官方价目折算（高峰 / 空闲两档判定与余额气泡一致）',
   // 设置 → 通用 → 快捷键里的命令标题。
   'shortcut.open': '打开桌宠对话',
   'shortcut.chat': '打开对话弹窗',
@@ -220,9 +223,10 @@ export const zh = {
   notifyDenyError: '申请权限时出错',
   notifyGuide: '引导：点击地址栏左侧 🔒/ⓘ →「网站设置」→「通知」→ 改为「允许」，刷新页面后重试。',
   storageTitle: '卸载与存储',
-  storageHint: '插件在本机落下的全部位置。删缓存不影响使用（会自动重下/重建）；删「插件用户数据」会丢配置与对话记忆。',
+  storageHint:
+    '插件在本机落下的全部位置。删缓存不影响使用（会自动重下/重建）；删「插件用户数据」会丢配置、对话记忆与每轮花费账本。',
   'storage.userData':
-    '插件用户数据：自定义配置 main-config.jsonc、对话记忆 memory.json、自定义动画素材 main-animation/、文件宠物 pet/',
+    '插件用户数据：自定义配置 main-config.jsonc、对话记忆 memory.json、每轮花费账本 turn-costs.json、自定义动画素材 main-animation/、文件宠物 pet/',
   'storage.electron': '桌面宠物用的 Electron 运行时（体积较大；删除后下次启用桌面模式会自动重新下载）',
   'storage.desktopCache': '桌面宠物窗口的缓存与主屏缩放缓存（可删，会自动重建）',
   'storage.electronCache': 'Electron 安装包下载缓存（可删，需要时会重新下载）',

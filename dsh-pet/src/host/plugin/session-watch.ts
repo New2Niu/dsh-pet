@@ -6,7 +6,7 @@
  */
 import { GOAL_UPDATE_TOOL, currentTaskFromTodo, goalUpdateAction, reduceWorkStatus } from '../work-status.ts';
 import { addUsage, turnCostText, type TurnTokenCounts } from '../pricing.ts';
-import { TurnCostStore } from '../turn-costs.ts';
+import type { TurnCostStore } from '../turn-costs.ts';
 import { toolDetailFromEvent } from '../tool-detail.ts';
 import {
   agentErrorFrame,
@@ -38,7 +38,10 @@ export type SessionWatchInput = {
   Pick<SessionNotify, 'terminalTimers'> &
   Pick<SessionNotify, 'toolsInFlight'> &
   Pick<SessionNotify, 'turnFlags'> &
-  Pick<HostSetup, 'workStatus'>;
+  Pick<HostSetup, 'workStatus'> & {
+    /** 每轮花费的账本（装配层持有，同时负责落盘；本模块只往里记）。 */
+    turnCosts: TurnCostStore;
+  };
 
 /** 一次工具事件在记账表里的形态：调用开始（带详情）或结果返回（按标识移除一条）。 */
 type ToolPhase =
@@ -150,10 +153,10 @@ export function registerSessionWatch(deps: SessionWatchInput): void {
     terminalTimers,
     toolsInFlight,
     turnFlags,
+    turnCosts,
     workStatus,
   } = deps;
-  // 每轮花费的短期账本：只给对话界面在「用量」右侧补一句，宠物渲染不读它。
-  const turnCosts = new TurnCostStore();
+  // 每轮花费的账本由装配层持有（它还要负责磁盘副本），这里只往里记；宠物渲染不读它。
   // 工作状态联动：监听 DSH 会话事件 → 聚合当前活动状态（WorkStatusStore → 展示快照）。
   // 消费 turn/start、user/message（goal 续跑轮判定）、tool/call、tool/result、approval/asked、
   // turn/end、todo/write（只更新任务详情文案，不切档位）。纯监听不调用模型。
@@ -269,7 +272,8 @@ export function registerSessionWatch(deps: SessionWatchInput): void {
             ? turnCostText(counts, ctx.agentDefaultModel.currentSelection(), new Date())
             : undefined;
         workStatus.setCost(sessionId, cost ?? null);
-        // 同一份金额也记进「按轮次」的账本：对话界面据此在每一轮的「用量」右侧标出来。
+        // 同一份金额也记进「按轮次」的账本：对话界面据此在每一轮的动作行上方标出来。
+        // publishTurnCosts 由装配层包过一层：除了写 /state，还会在防抖窗口后把账本落到磁盘。
         const turn = String((event as { data?: { turn?: unknown } } | null)?.data?.turn ?? '');
         if (turn !== '' && turnCosts.record(sessionId, turn, cost ?? null)) publishTurnCosts(turnCosts.snapshot());
       }

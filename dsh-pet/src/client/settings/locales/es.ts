@@ -22,6 +22,9 @@ export const es: Record<Key, string> = {
   'cmd.chat': 'Chat',
   'cmd.pet': 'Mascota',
   'cmd.balance': 'Saldo',
+  'cost.label': 'Este turno',
+  'cost.hint':
+    'Coste de este turno, calculado con las tarifas oficiales de DeepSeek (pico / valle, igual que el globo de saldo)',
   'shortcut.open': 'Abrir el chat de la mascota',
   'shortcut.chat': 'Abrir la ventana de chat',
   'shortcut.hear': 'Entrada de voz',
@@ -246,9 +249,9 @@ export const es: Record<Key, string> = {
     'Guía: haz clic en el icono 🔒/ⓘ junto a la barra de direcciones → Configuración del sitio → Notificaciones → cámbialo a «Permitir» y luego recarga la página y reintenta.',
   storageTitle: 'Desinstalación y almacenamiento',
   storageHint:
-    'Todas las ubicaciones que escribe este plugin. Borrar las cachés no rompe nada (se vuelven a descargar/reconstruir); borrar los «datos de usuario del plugin» pierde la configuración y la memoria del chat.',
+    'Todas las ubicaciones que escribe este plugin. Borrar las cachés no rompe nada (se vuelven a descargar/reconstruir); borrar los «datos de usuario del plugin» pierde la configuración, la memoria del chat y el registro de coste por turno.',
   'storage.userData':
-    'Datos de usuario del plugin: configuración personalizada main-config.jsonc, memoria del chat memory.json, recursos de animación personalizados main-animation/, mascotas de archivo pet/',
+    'Datos de usuario del plugin: configuración personalizada main-config.jsonc, memoria del chat memory.json, registro de coste por turno turn-costs.json, recursos de animación personalizados main-animation/, mascotas de archivo pet/',
   'storage.electron':
     'Runtime de Electron que usa la mascota de escritorio (grande; se vuelve a descargar automáticamente la próxima vez que se active el modo escritorio)',
   'storage.desktopCache':

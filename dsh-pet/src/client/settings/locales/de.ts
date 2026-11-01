@@ -20,6 +20,9 @@ export const de: Record<Key, string> = {
   'cmd.chat': 'Chat',
   'cmd.pet': 'Pet',
   'cmd.balance': 'Guthaben',
+  'cost.label': 'Dieser Zug',
+  'cost.hint':
+    'Kosten dieses Zugs, berechnet mit den offiziellen DeepSeek-Tarifen (Haupt- / Nebenzeit wie in der Guthaben-Blase)',
   'shortcut.open': 'Pet-Chat öffnen',
   'shortcut.chat': 'Chatfenster öffnen',
   'shortcut.hear': 'Spracheingabe',
@@ -242,9 +245,9 @@ export const de: Record<Key, string> = {
     'Anleitung: links neben der Adressleiste auf 🔒/ⓘ klicken → „Website-Einstellungen" → „Benachrichtigungen" → auf „Zulassen" setzen, Seite neu laden und erneut versuchen.',
   storageTitle: 'Deinstallation & Speicher',
   storageHint:
-    'Alle Orte, an denen das Plugin auf diesem Rechner Daten ablegt. Cache löschen ist unschädlich (wird automatisch neu geladen/neu aufgebaut); „Plugin-Benutzerdaten" löschen kostet Konfiguration und Chat-Gedächtnis.',
+    'Alle Orte, an denen das Plugin auf diesem Rechner Daten ablegt. Cache löschen ist unschädlich (wird automatisch neu geladen/neu aufgebaut); „Plugin-Benutzerdaten" löschen kostet Konfiguration, Chat-Gedächtnis und das Kostenjournal pro Zug.',
   'storage.userData':
-    'Plugin-Benutzerdaten: eigene Konfiguration main-config.jsonc, Chat-Gedächtnis memory.json, eigene Animations-Assets main-animation/, Datei-Pets pet/',
+    'Plugin-Benutzerdaten: eigene Konfiguration main-config.jsonc, Chat-Gedächtnis memory.json, Kostenjournal pro Zug turn-costs.json, eigene Animations-Assets main-animation/, Datei-Pets pet/',
   'storage.electron':
     'Electron-Laufzeit für das Desktop-Pet (groß; wird beim nächsten Start des Desktop-Modus automatisch neu heruntergeladen)',
   'storage.desktopCache':

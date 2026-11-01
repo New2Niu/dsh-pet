@@ -12,7 +12,7 @@ import { takeMenuEvents } from './menu-service.ts';
 import { getStateSnapshot } from './state-service.ts';
 import { dicts, makePetConfigSection, NS, petBridge } from './settings.ts';
 import { initNotify } from './notify.ts';
-import { installTurnCostBadges } from './turn-cost.ts';
+import { injectTurnCostCss, makeTurnCostTail } from './turn-cost.ts';
 import { installCommandFaces, type CommandFace, type CommandUiLike } from './command-faces.ts';
 import { installSectionNavIcon } from './nav-icon.ts';
 import { registerPetChatTab, openPetChatTab } from './chat/register.ts';
@@ -103,9 +103,31 @@ export function makeFactory(): (require: (mod: string) => any) => any {
         'dsh-pet: notifications',
       );
 
-      // 对话界面「本轮花费」：在每条回复的「用量 20.5K tok」右侧补一句 ¥0.0021。
-      // 金额由宿主按轮算好（sections.turnCost），这里只在 DOM 层打标记 + ::after；DSH 改版即静默失效。
-      ctx.effect(() => installTurnCostBadges(), 'dsh-pet: turn cost badges');
+      // 对话界面「本轮花费」：注册进 turnTail 插槽，在动作行上方单独一行「本轮 ¥0.0021」。
+      // 不走 DOM 硬贴用量徽标——徽标外面是 min-width:0 的 flex 项，塞进去会把「用量 21.2K tok」
+      // 自己挤成省略号；插槽也压根没有「用量右侧」这个位置。依据与降级见 turn-cost.ts。
+      // 整段兜一层：插槽或样式出问题都不许拖垮插件激活。
+      ctx.effect(() => {
+        try {
+          const disposeCss = injectTurnCostCss();
+          const TurnCostTail = makeTurnCostTail({ h, useState, useEffect, t });
+          ctx.slots.inject('conversation.chat.turnTail', function* () {
+            yield ctx.slots.register(
+              {
+                name: 'conversation.chat.turnTail',
+                id: 'pet-turn-cost',
+                order: 100,
+                label: () => t('cost.label'),
+              },
+              TurnCostTail,
+            );
+          });
+          return disposeCss;
+        } catch (error) {
+          console.error('[dsh-pet] 本轮花费未注册（已忽略，不影响启动）：', error);
+          return () => {};
+        }
+      }, 'dsh-pet: turn cost tail');
 
       // /pet 选择框：选中后提交 /pet <id>，由 host 命令落地。
       // commandUi 已是服务依赖，但仍保留缺失时的降级提示。

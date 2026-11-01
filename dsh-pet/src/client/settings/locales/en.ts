@@ -20,6 +20,10 @@ export const en: Record<Key, string> = {
   'cmd.chat': 'Chat',
   'cmd.pet': 'Pet',
   'cmd.balance': 'Balance',
+  // The "This turn ¥0.0021" line under every reply in the chat view.
+  'cost.label': 'This turn',
+  'cost.hint':
+    'Cost of this turn, priced with the official DeepSeek rates (peak / off-peak, same rule as the balance bubble)',
   'shortcut.open': 'Open pet chat',
   'shortcut.chat': 'Open chat bubble',
   'shortcut.hear': 'Voice input',
@@ -241,9 +245,9 @@ export const en: Record<Key, string> = {
     'Guide: click the 🔒/ⓘ icon next to the address bar → Site settings → Notifications → set to "Allow", then refresh and retry.',
   storageTitle: 'Uninstall & storage',
   storageHint:
-    'Every location this plugin writes to. Deleting cache folders is harmless (they re-download / rebuild); deleting "plugin user data" loses your config and chat memory.',
+    'Every location this plugin writes to. Deleting cache folders is harmless (they re-download / rebuild); deleting "plugin user data" loses your config, chat memory, and the per-turn cost ledger.',
   'storage.userData':
-    'Plugin user data: custom config main-config.jsonc, chat memory memory.json, custom animation assets main-animation/, file pets pet/',
+    'Plugin user data: custom config main-config.jsonc, chat memory memory.json, per-turn cost ledger turn-costs.json, custom animation assets main-animation/, file pets pet/',
   'storage.electron':
     'Electron runtime used by the desktop pet (large; re-downloaded automatically the next time desktop mode starts)',
   'storage.desktopCache':

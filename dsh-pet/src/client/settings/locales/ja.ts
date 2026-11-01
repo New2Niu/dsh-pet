@@ -20,6 +20,9 @@ export const ja: Record<Key, string> = {
   'cmd.chat': 'チャット',
   'cmd.pet': 'ペット',
   'cmd.balance': '残高',
+  // チャット画面で各返信の下に出る「今回 ¥0.0021」の行。
+  'cost.label': '今回',
+  'cost.hint': 'このターンの費用：DeepSeek 公式の料金で算出（ピーク / オフピークの判定は残高バブルと同じ）',
   'shortcut.open': 'ペット会話を開く',
   'shortcut.chat': '会話ウィンドウを開く',
   'shortcut.hear': '音声入力',
@@ -237,9 +240,9 @@ export const ja: Record<Key, string> = {
     'ガイド：アドレスバー左側の 🔒/ⓘ →「サイトの設定」→「通知」→「許可」に変更し、ページを更新してから再試行してください。',
   storageTitle: 'アンインストールとストレージ',
   storageHint:
-    'プラグインがこの PC 上に作成されるすべての場所です。キャッシュを削除しても使用に影響はありません（自動的に再ダウンロード / 再構築されます）。「プラグインのユーザーデータ」を削除すると、設定と会話メモリが失われます。',
+    'プラグインがこの PC 上に作成されるすべての場所です。キャッシュを削除しても使用に影響はありません（自動的に再ダウンロード / 再構築されます）。「プラグインのユーザーデータ」を削除すると、設定・会話メモリ・ターンごとの費用台帳が失われます。',
   'storage.userData':
-    'プラグインのユーザーデータ：カスタム設定 main-config.jsonc、会話メモリ memory.json、カスタムアニメーション素材 main-animation/、ファイル型ペット pet/',
+    'プラグインのユーザーデータ：カスタム設定 main-config.jsonc、会話メモリ memory.json、ターンごとの費用台帳 turn-costs.json、カスタムアニメーション素材 main-animation/、ファイル型ペット pet/',
   'storage.electron':
     'デスクトップペットが使う Electron ランタイム（サイズが大きい。削除すると次回デスクトップモード起動時に自動で再ダウンロードされます）',
   'storage.desktopCache':

@@ -1,56 +1,70 @@
 /**
- * 对话界面「本轮花费」补丁：在每条回复的「用量 20.5K tok」右侧补一句 `¥0.0021`。
+ * 对话界面「本轮花费」：注册进 `conversation.chat.turnTail` 插槽，在每条回复的动作行
+ * （复制 / 分支 / 用量 / 时间）**上方**单独占一行小字：`本轮 ¥0.0021`。
  *
- * 为什么只能在 DOM 层做：DSH 的用量徽标是 ui-chat 内部组件（`TurnUsagePanel`），第三方只有
- * `conversation.chat.assistant-actions` 一个插槽，而它在徽标**左边**（actions 行里先渲染 extraActions，
- * 再渲染 `<span>[用量, 时间]</span>`）。要落在「用量右侧」，只能给徽标容器打一个属性、用 `::after`
- * 画出来——和 nav-icon 一样只打 `data-*` 标记，不动 DOM 结构：React 会对自己创建的节点做 removeChild，
- * 插进去的节点迟早会把它惹毛。
+ * 为什么不再贴着用量徽标：DSH 的「用量 20.5K tok」是 ui-chat 内部组件（`TurnUsagePanel`），
+ * 它外面那个 `.endInfo` 是 `min-width:0` 的 flex 子项——往里塞任何内容都会跟徽标抢宽度，
+ * 结果是徽标自己先被省略号截掉（`用量 21.2K tok…`），金额反倒被挤在用量与时间之间。
+ * 第三方能拿到的只有两个插槽：`conversation.chat.assistant-actions`（动作图标之间）和
+ * `conversation.chat.turnTail`（动作行之前），都没有「用量右侧」这个位置。
  *
- * 视觉上不是「多一个数字」，而是把金额接成用量徽标的第二段：`用量 21K tok · ¥0.0021`，后面才是时间。
- * 这也是 DSH 自己表达次级信息的方式（徽标内部就用「·」连接缓存命中率）。
+ * 选 turnTail 的两个理由：
+ *   ① props 里现成带 `turn`（轮次号）与框架标准工具包的 `sessionId`，正好对上宿主账本
+ *      `sessionId → turn → 金额`，不用再从 DOM 反查，也就没有 React 管教外来节点的问题；
+ *   ② 语义更贴：钱是**一轮**的属性，不是某条消息的动作，单独一行当注脚比塞进按钮里干净。
  *
- * 金额由宿主算好（src/host/turn-costs）：它按轮次记 `sessionId → turn → ¥0.0021`，这里只做匹配与上色。
- * 认不出价目、或者这一轮早于本次启动，就没有属性、也就没有这一句——绝不在这里凭 token 数估算。
+ * 金额由宿主算好（src/host/turn-costs）：按轮次记 `sessionId → turn → ¥0.0021`，认不出价目、
+ * 或这一轮早于本次启动，就没有值——组件直接返回 null，绝不在这里凭 token 数估算。
  *
- * 降级：缺 document / MutationObserver 时什么都不装；认不出徽标（DSH 改版）时静默不做，只在控制台留一条。
+ * 降级：缺插槽声明时 `ctx.slots.inject` 一直等着，界面什么都不显示；缺 document 时不注入样式。
  *
  * @module dsh-pet/src/client/turn-cost
  */
 import { getStateSnapshot, subscribeStateSnapshot } from './state-service.ts';
+import type { Key } from './settings/locales/index.ts';
+import type { PollState } from '../shared/state.ts';
 
 /** 注入的样式表去重标记（与宠物页面 / 导航图标同一套 `data-plugin-css` 约定）。 */
 const STYLE_TAG = 'dsh-pet/turn-cost.css';
 
-/** 打在用量徽标容器上的标记属性：`::after` 用它取金额文本。 */
-export const COST_MARK = 'data-dsh-pet-cost';
-
-/** 一轮的落点：DSH 在每轮尾部容器上带 `data-turn-tail="<turn>"`。 */
-const TURN_SELECTOR = '[data-turn-tail]';
-
-/** 会话容器：`data-conversation-session="<sessionId>"`，用它在多会话 / 多标签页之间对齐金额。 */
-const SESSION_SELECTOR = '[data-conversation-session]';
-
-/** 用量徽标的触发器：整行里唯一带 `aria-haspopup="dialog"` 的按钮（点开用量明细）。 */
-const USAGE_TRIGGER = 'button[aria-haspopup="dialog"]';
+/** 组件根节点的类名；样式只认它，避免污染 DSH 自己的结构。 */
+const COST_CLASS = 'dsh-pet-turn-cost';
 
 /** 账本：sessionId → turn → 金额文本。 */
 export type TurnCostMap = Record<string, Record<string, string>>;
 
 /**
- * 金额的样式：当作用量徽标的**第二段**来画。
+ * 金额小行的样式。
  *
- * DSH 自己的次级信息就是用「·」接在主页后面的（`reading()` 里那个 sep 圆点），这里沿用同一套语言：
- * `用量 21K tok · ¥0.0021`，然后才是时间。分隔点用 `\00a0` 跟着不换行，负 4px 把金额收进按钮的
- * 右侧内边距（8px），间距因此和徽标内部的 `gap:4px` 对齐——看着像一句话，而不是夹在中间的一串灰字。
- * 字号、行高、数字对齐都抄徽标；颜色取次级文本而不是三级（三级太淡，和右边的时间糊在一起）。
+ * 位置靠负 margin 收：`turnTail` 所在的列是 `gap:16px` 的 flex，动作行自己还有 4px 上边距；
+ * 不加补偿的话正文与动作行之间会凭空多出 20px 空白。上下各收一点后，整块高度比原来只多几像素，
+ * 视觉上就是正文脚下多了一行脚注。
+ *
+ * 字号 / 行高抄用量徽标那一套（次级字号再小 1px）；颜色取三级文本——它是注脚，不该抢正文。
+ * 历史轮次跟随 DSH 自己的动作行：`[data-actions-reveal=hover]` 的块默认藏起来，悬停或聚焦再现，
+ * 这样往下翻旧对话时不会被一屏金额糊住；最新一轮是 `always`，一直可见。
  */
 const COST_CSS =
-  '[data-dsh-pet-cost]::after{content:"·\\00a0" attr(data-dsh-pet-cost);margin-inline-start:-4px;' +
+  '.' +
+  COST_CLASS +
+  '{display:inline-flex;align-items:center;gap:4px;margin-block:-8px -10px;' +
   'font-size:calc(var(--dsh-content-font-size-secondary,13px) - 1px);' +
-  'line-height:calc(24px + var(--dsh-content-font-delta,0px));' +
-  'font-variant-numeric:tabular-nums;font-weight:500;' +
-  'color:var(--dsw-alias-label-secondary,currentColor);white-space:nowrap}';
+  'line-height:calc(22px + var(--dsh-content-font-delta,0px));' +
+  'color:var(--dsw-alias-label-tertiary);font-variant-numeric:tabular-nums;white-space:nowrap}' +
+  '.' +
+  COST_CLASS +
+  '-label{opacity:.75}' +
+  '.' +
+  COST_CLASS +
+  '-amount{font-weight:500}' +
+  '@media (hover:hover){[data-actions-reveal=hover] .' +
+  COST_CLASS +
+  '{opacity:0;transition:opacity 80ms}' +
+  '[data-actions-reveal=hover]:hover .' +
+  COST_CLASS +
+  ',[data-actions-reveal=hover]:focus-within .' +
+  COST_CLASS +
+  '{opacity:1}}';
 
 /**
  * 从 /state 的 `sections.turnCost` 里取出账本；形状不对就当没有。
@@ -76,103 +90,113 @@ export function readTurnCosts(raw: unknown): TurnCostMap {
   return out;
 }
 
-/** 当前快照里的账本（宠物轮询每秒刷新一次，这里直接读最近一拍）。 */
-function currentCosts(): TurnCostMap {
-  const snapshot = getStateSnapshot();
+/**
+ * 从一次轮询快照里取账本。
+ *
+ * @param snapshot - 最近一拍 /state；还没拉到过时为 null。
+ * @returns 校验过的账本；没有快照时是空对象。
+ */
+export function costsOf(snapshot: PollState | null): TurnCostMap {
   return readTurnCosts(snapshot?.sections.turnCost?.data);
 }
 
 /**
- * 把账本画到 DOM 上：逐轮找用量徽标容器，打上/更新/摘掉标记属性。
+ * 取某个会话某一轮的金额。
  *
- * 纯 DOM 操作，不装观察者、不注入样式——便于用一个假 document 单测。
- *
- * @param doc - 文档（真实 DOM 或测试替身）。
- * @param costs - 账本；没有对应轮次时把已有标记摘掉（宁可没有，也不留上一轮的金额）。
+ * @param map - 账本。
+ * @param sessionId - 会话 id（插槽的框架标准 props）。认不出就不匹配，绝不错贴到别的会话上。
+ * @param turn - 轮次号（`TurnLocation.turn`）；数字或数字字符串都收。
+ * @returns 金额文本；对不上号时 undefined。
  */
-export function paintTurnCosts(doc: Document, costs: TurnCostMap): void {
-  const rows = doc.querySelectorAll(TURN_SELECTOR);
-  for (const row of Array.from(rows)) {
-    const turn = row.getAttribute('data-turn-tail') ?? '';
-    const session = row.closest(SESSION_SELECTOR)?.getAttribute('data-conversation-session') ?? '';
-    // 会话或轮次认不出来就不标：宁可不显示，也不能把别的会话的金额贴到这行上。
-    const cost = turn === '' || session === '' ? undefined : costs[session]?.[turn];
-    // 用量徽标的容器（`<span>[按钮]</span>`）：标记打在它上面，`::after` 就落在徽标右侧、时间左侧。
-    const target = row.querySelector(USAGE_TRIGGER)?.parentElement ?? null;
-    if (target === null) continue;
-    if (cost === undefined) {
-      if (target.hasAttribute(COST_MARK)) target.removeAttribute(COST_MARK);
-    } else if (target.getAttribute(COST_MARK) !== cost) {
-      target.setAttribute(COST_MARK, cost);
-    }
-  }
-}
-
-/** 注入样式与去重标记；已注入过就什么都不做。 */
-function injectCostCss(doc: Document): void {
-  if (doc.querySelector('style[data-plugin-css="' + STYLE_TAG + '"]') !== null) return;
-  const tag = doc.createElement('style');
-  tag.dataset.plugin = 'dsh-pet';
-  tag.dataset.pluginCss = STYLE_TAG;
-  tag.textContent = COST_CSS;
-  doc.head.appendChild(tag);
-}
-
-/** 安装补丁时注入的能力（测试替换用；生产路径全用真实实现）。 */
-export interface TurnCostDeps {
-  /** 文档；缺省用全局 document。 */
-  doc?: Document;
-  /** 状态快照订阅；缺省订阅宠物轮询。 */
-  subscribe?: (listener: () => void) => () => void;
-  /** 读账本；缺省读最近一拍 /state。 */
-  costs?: () => TurnCostMap;
+export function turnCostOf(map: TurnCostMap, sessionId: unknown, turn: unknown): string | undefined {
+  if (typeof sessionId !== 'string' || sessionId === '') return undefined;
+  if (typeof turn !== 'number' && typeof turn !== 'string') return undefined;
+  const key = String(turn);
+  if (key === '') return undefined;
+  return map[sessionId]?.[key];
 }
 
 /**
- * 安装补丁：订阅状态 + 观察对话 DOM，把每轮花费刷到用量徽标右侧。
+ * 取最近一拍里某一轮的金额（组件与测试共用的唯一读法）。
  *
- * @param deps - 可替换的文档 / 订阅（测试用）。
- * @returns 卸载函数：断开观察者、退订、摘掉标记与样式。
+ * @param snapshot - 最近一拍 /state。
+ * @param sessionId - 会话 id。
+ * @param turn - 轮次号。
+ * @returns 金额文本；没有快照 / 对不上号时 undefined。
  */
-export function installTurnCostBadges(deps: TurnCostDeps = {}): () => void {
-  const doc = deps.doc ?? (typeof document === 'undefined' ? undefined : document);
-  if (doc === undefined) return () => {};
-  const MutObserver = (globalThis as { MutationObserver?: typeof MutationObserver }).MutationObserver;
-  if (MutObserver === undefined) {
-    console.warn('[dsh-pet] 本轮花费：缺 MutationObserver，已跳过');
-    return () => {};
-  }
+export function pickTurnCost(snapshot: PollState | null, sessionId: unknown, turn: unknown): string | undefined {
+  return turnCostOf(costsOf(snapshot), sessionId, turn);
+}
 
-  const readCosts = deps.costs ?? currentCosts;
-  // 订阅的是「有新的一拍」而不是状态本身：账本变了就重画，没变也重画（DOM 可能刚重建）。
-  const subscribe: (listener: () => void) => () => void =
-    deps.subscribe ?? ((listener) => subscribeStateSnapshot(() => listener()));
+/** 造金额小行需要的最少 react 能力（宿主注入，不直接 import react）。 */
+export interface TurnCostTailDeps {
+  /** 创建元素；子节点写进 `props.children`（`react/jsx-runtime` 的 jsx 契约）。 */
+  h: (type: unknown, props?: Record<string, unknown> | null) => unknown;
+  /** 状态。 */
+  useState: <T>(init: T | (() => T)) => [T, (next: T) => void];
+  /** 副作用；返回函数作为清理。 */
+  useEffect: (effect: () => void | (() => void), deps: readonly unknown[]) => void;
+  /** 文案。 */
+  t: (key: Key) => string;
+}
 
-  injectCostCss(doc);
+/** `turnTail` 插槽给到的 props（只取本项目用到的两个）。 */
+export interface TurnCostTailProps {
+  /** 这一轮的定位；`turn` 是轮次号。 */
+  readonly turn?: { readonly turn?: unknown } | undefined;
+  /** 框架标准工具包给的会话身份。 */
+  readonly sessionId?: unknown;
+}
 
-  let timer: ReturnType<typeof setTimeout> | null = null;
-  /**
-   * 合并一小段时间内的多次 DOM 变动：流式输出时子树每秒变几十次，而重绘要把整页的轮尾扫一遍，
-   * 逐次重绘没必要（金额只在一轮结束时才出现）。200ms 的延迟看不出来。
-   */
-  const schedulePaint = (): void => {
-    if (timer !== null) return;
-    timer = setTimeout(() => {
-      timer = null;
-      paintTurnCosts(doc, readCosts());
-    }, 200);
+/**
+ * 造「本轮花费」小行组件。
+ *
+ * 没有金额就返回 null——插槽允许条目返回 null，不会占位。
+ *
+ * @param deps - 注入的 react 能力与文案。
+ * @returns 插槽组件：props 见 {@link TurnCostTailProps}。
+ */
+export function makeTurnCostTail(deps: TurnCostTailDeps): (props: TurnCostTailProps) => unknown {
+  const { h, useState, useEffect, t } = deps;
+  return function TurnCostTail(props: TurnCostTailProps): unknown {
+    const sessionId = props.sessionId;
+    const turn = props.turn?.turn;
+    // 首帧就带值，避免「先空一行、下一拍金额才跳出来」的闪烁。
+    const [cost, setCost] = useState<string | undefined>(() => pickTurnCost(getStateSnapshot(), sessionId, turn));
+
+    useEffect(() => {
+      const sync = (): void => setCost(pickTurnCost(getStateSnapshot(), sessionId, turn));
+      sync();
+      // 轮询每秒一拍：值没变时 setState 的是同一个字符串，React 自己跳过重渲染。
+      return subscribeStateSnapshot(sync);
+    }, [sessionId, turn]);
+
+    if (cost === undefined) return null;
+    return h('div', {
+      className: COST_CLASS,
+      title: t('cost.hint'),
+      children: [
+        h('span', { className: COST_CLASS + '-label', children: t('cost.label') }),
+        h('span', { className: COST_CLASS + '-amount', children: cost }),
+      ],
+    });
   };
+}
 
-  schedulePaint();
-  const unsubscribe = subscribe(schedulePaint);
-  const observer = new MutObserver(schedulePaint);
-  // 只盯子节点增删：折叠展开、流式追加、切会话都会重建节点；属性变化与我们无关。
-  observer.observe(doc.body, { childList: true, subtree: true });
-
+/**
+ * 注入金额小行的样式（幂等）。
+ *
+ * @returns 释放函数：移除本次创建的那张样式表；已注入过时是空操作。
+ */
+export function injectTurnCostCss(): () => void {
+  if (typeof document === 'undefined') return () => {};
+  if (document.querySelector('style[data-plugin-css="' + STYLE_TAG + '"]') !== null) return () => {};
+  const tag = document.createElement('style');
+  tag.dataset.plugin = 'dsh-pet';
+  tag.dataset.pluginCss = STYLE_TAG;
+  tag.textContent = COST_CSS;
+  document.head.appendChild(tag);
   return () => {
-    if (timer !== null) clearTimeout(timer);
-    observer.disconnect();
-    unsubscribe();
-    for (const el of Array.from(doc.querySelectorAll('[' + COST_MARK + ']'))) el.removeAttribute(COST_MARK);
+    if (tag.isConnected) tag.remove();
   };
 }

@@ -20,6 +20,9 @@ export const pt: Record<Key, string> = {
   'cmd.chat': 'Conversa',
   'cmd.pet': 'Pet',
   'cmd.balance': 'Saldo',
+  'cost.label': 'Este turno',
+  'cost.hint':
+    'Custo deste turno, calculado com as tarifas oficiais da DeepSeek (pico / fora de pico, como no balão de saldo)',
   'shortcut.open': 'Abrir o chat do pet',
   'shortcut.chat': 'Abrir a janela de chat',
   'shortcut.hear': 'Entrada de voz',
@@ -243,9 +246,9 @@ export const pt: Record<Key, string> = {
     'Como liberar: clique no 🔒/ⓘ ao lado da barra de endereços → "Configurações do site" → "Notificações" → mude para "Permitir", atualize a página e tente de novo.',
   storageTitle: 'Desinstalação e armazenamento',
   storageHint:
-    'Todos os lugares em que o plugin grava arquivos. Apagar caches não atrapalha (são baixados ou recriados sozinhos); apagar "dados do usuário do plugin" perde a configuração e a memória da conversa.',
+    'Todos os lugares em que o plugin grava arquivos. Apagar caches não atrapalha (são baixados ou recriados sozinhos); apagar "dados do usuário do plugin" perde a configuração, a memória da conversa e o registro de custo por turno.',
   'storage.userData':
-    'Dados do usuário do plugin: configuração personalizada main-config.jsonc, memória da conversa memory.json, animações personalizadas main-animation/, pets de arquivo pet/',
+    'Dados do usuário do plugin: configuração personalizada main-config.jsonc, memória da conversa memory.json, registro de custo por turno turn-costs.json, animações personalizadas main-animation/, pets de arquivo pet/',
   'storage.electron':
     'Runtime Electron usado pelo pet do desktop (grande; é baixado de novo automaticamente na próxima vez que o modo desktop iniciar)',
   'storage.desktopCache':

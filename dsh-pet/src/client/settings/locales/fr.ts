@@ -21,6 +21,9 @@ export const fr: Record<Key, string> = {
   'cmd.chat': 'Discussion',
   'cmd.pet': 'Compagnon',
   'cmd.balance': 'Solde',
+  'cost.label': 'Ce tour',
+  'cost.hint':
+    'Coût de ce tour, calculé avec les tarifs officiels de DeepSeek (pleine / creuse, comme la bulle de solde)',
   'shortcut.open': 'Ouvrir le chat du compagnon',
   'shortcut.chat': 'Ouvrir la fenêtre de chat',
   'shortcut.hear': 'Saisie vocale',
@@ -246,9 +249,9 @@ export const fr: Record<Key, string> = {
     "Marche à suivre : cliquez sur l'icône 🔒/ⓘ à gauche de la barre d'adresse → « Paramètres du site » → « Notifications » → choisissez « Autoriser », puis rafraîchissez la page et réessayez.",
   storageTitle: 'Désinstallation et stockage',
   storageHint:
-    'Tous les emplacements où ce plugin écrit sur la machine. Supprimer les caches est sans risque (ils sont retéléchargés / reconstruits) ; supprimer les « données utilisateur du plugin » fait perdre la configuration et la mémoire de discussion.',
+    'Tous les emplacements où ce plugin écrit sur la machine. Supprimer les caches est sans risque (ils sont retéléchargés / reconstruits) ; supprimer les « données utilisateur du plugin » fait perdre la configuration, la mémoire de discussion et le registre des coûts par tour.',
   'storage.userData':
-    'Données utilisateur du plugin : configuration personnalisée main-config.jsonc, mémoire de discussion memory.json, animations personnalisées main-animation/, compagnons fichiers pet/',
+    'Données utilisateur du plugin : configuration personnalisée main-config.jsonc, mémoire de discussion memory.json, registre des coûts par tour turn-costs.json, animations personnalisées main-animation/, compagnons fichiers pet/',
   'storage.electron':
     'Runtime Electron du compagnon de bureau (volumineux ; retéléchargé automatiquement au prochain démarrage du mode bureau)',
   'storage.desktopCache':
