@@ -3220,6 +3220,8 @@ components:
               $ref: "#/components/schemas/NotifyLeaf"
             config:
               $ref: "#/components/schemas/ConfigLeaf"
+            turnCost:
+              $ref: "#/components/schemas/TurnCostLeaf"
         pets:
           type: object
           description: 每只宠物各自一份；键是宠物 id（**可含点号，勿切分**）
@@ -3539,6 +3541,29 @@ components:
             「峰 / 谷」同一个判定）。**认不出服务商或模型时不写这个键**，气泡就少这一句——绝不报一个
             编出来的金额；`POST /work-status` 这类外部写入同样不会带它。
             金额格式：≥1 元两位小数，几厘钱最多四位（`¥0.0200` → `¥0.02`）。
+
+    TurnCostLeaf:
+      type: object
+      required: [counter, data]
+      description: |
+        **每轮对话的花费**（`sessionId → turn → 金额`），供对话界面在每条回复的「用量」徽标右侧
+        标一句 `¥0.0021`。`data` 是普通对象，`null` = 还没写过。
+
+        只保留本次 DSH 启动后结束的轮次（内存账本，最多 6 个会话 × 每个 60 轮，按最近使用淘汰）——
+        历史轮次没有金额，重启后也不会有；这是给「刚聊完那几轮」看的注脚，不是账单。
+        认不出服务商 / 模型时不写该轮（不估算），所以缺某个 turn 是正常现象。
+      properties:
+        counter:
+          $ref: "#/components/schemas/Counter"
+        data:
+          oneOf:
+            - type: object
+              additionalProperties:
+                type: object
+                additionalProperties:
+                  type: string
+                  example: "¥0.0021"
+            - type: "null"
 
     NotifyLeaf:
       type: object

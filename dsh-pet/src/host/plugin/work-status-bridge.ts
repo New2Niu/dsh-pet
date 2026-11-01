@@ -62,6 +62,22 @@ export function createWorkStatusBridge(deps: WorkStatusBridgeInput) {
     });
   };
 
+  /** 上一次写出去的每轮花费快照（序列化后比对，内容没变不写）。 */
+  let publishedTurnCosts = '';
+
+  /**
+   * 写每轮花费（sessionId → turn → `¥0.0021`）。
+   *
+   * 与工作状态分开成两个叶子：它只给对话界面在「用量」右侧补一句，宠物完全不读；混进
+   * workStatus 会让宠物因为别人的轮次多写一拍。
+   */
+  const publishTurnCosts = (costs: Record<string, Record<string, string>>): void => {
+    const key = JSON.stringify(costs);
+    if (key === publishedTurnCosts) return;
+    publishedTurnCosts = key;
+    state.writeSection('turnCost', costs);
+  };
+
   /** 停掉挂起的补写定时器（插件卸载时调用）。 */
   const stopWorkStatusFlush = (): void => {
     if (workFlushTimer !== null) {
@@ -69,7 +85,7 @@ export function createWorkStatusBridge(deps: WorkStatusBridgeInput) {
       workFlushTimer = null;
     }
   };
-  return { publishWorkStatus, stopWorkStatusFlush };
+  return { publishWorkStatus, publishTurnCosts, stopWorkStatusFlush };
 }
 /** 工作状态桥的产出（供下游工厂按需 Pick）。 */
 export type WorkStatusBridge = ReturnType<typeof createWorkStatusBridge>;

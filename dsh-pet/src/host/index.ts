@@ -49,7 +49,7 @@ export function apply(ctx: any): void {
     nextExternalWorkSeq,
   } = setup;
   const workStatusBridge = createWorkStatusBridge({ state, workStatus });
-  const { publishWorkStatus, stopWorkStatusFlush } = workStatusBridge;
+  const { publishWorkStatus, publishTurnCosts, stopWorkStatusFlush } = workStatusBridge;
   const downloadReport = createDownloadReport({
     EXTERNAL_WORK_SESSION,
     nextExternalWorkSeq,
@@ -118,6 +118,7 @@ export function apply(ctx: any): void {
     lastTodoText,
     lastReplyText,
     notifyActivityTimers,
+    publishTurnCosts,
     publishWorkStatus,
     pushNotifyFrame,
     scheduleCompletionNotify,

@@ -6,6 +6,7 @@
  */
 import { GOAL_UPDATE_TOOL, currentTaskFromTodo, goalUpdateAction, reduceWorkStatus } from '../work-status.ts';
 import { addUsage, turnCostText, type TurnTokenCounts } from '../pricing.ts';
+import { TurnCostStore } from '../turn-costs.ts';
 import { toolDetailFromEvent } from '../tool-detail.ts';
 import {
   agentErrorFrame,
@@ -30,6 +31,7 @@ export type SessionWatchInput = {
   Pick<SessionNotify, 'lastReplyText'> &
   Pick<SessionNotify, 'notifyActivityTimers'> &
   Pick<WorkStatusBridge, 'publishWorkStatus'> &
+  Pick<WorkStatusBridge, 'publishTurnCosts'> &
   Pick<SessionNotify, 'pushNotifyFrame'> &
   Pick<SessionNotify, 'scheduleCompletionNotify'> &
   Pick<SessionNotify, 'scheduleTerminalCleanup'> &
@@ -140,6 +142,7 @@ export function registerSessionWatch(deps: SessionWatchInput): void {
     lastTodoText,
     lastReplyText,
     notifyActivityTimers,
+    publishTurnCosts,
     publishWorkStatus,
     pushNotifyFrame,
     scheduleCompletionNotify,
@@ -149,6 +152,8 @@ export function registerSessionWatch(deps: SessionWatchInput): void {
     turnFlags,
     workStatus,
   } = deps;
+  // 每轮花费的短期账本：只给对话界面在「用量」右侧补一句，宠物渲染不读它。
+  const turnCosts = new TurnCostStore();
   // 工作状态联动：监听 DSH 会话事件 → 聚合当前活动状态（WorkStatusStore → 展示快照）。
   // 消费 turn/start、user/message（goal 续跑轮判定）、tool/call、tool/result、approval/asked、
   // turn/end、todo/write（只更新任务详情文案，不切档位）。纯监听不调用模型。
@@ -264,6 +269,9 @@ export function registerSessionWatch(deps: SessionWatchInput): void {
             ? turnCostText(counts, ctx.agentDefaultModel.currentSelection(), new Date())
             : undefined;
         workStatus.setCost(sessionId, cost ?? null);
+        // 同一份金额也记进「按轮次」的账本：对话界面据此在每一轮的「用量」右侧标出来。
+        const turn = String((event as { data?: { turn?: unknown } } | null)?.data?.turn ?? '');
+        if (turn !== '' && turnCosts.record(sessionId, turn, cost ?? null)) publishTurnCosts(turnCosts.snapshot());
       }
       publishWorkStatus(); // 档位或文案变了 → 写 S（内容没变时它自己会短路，不产生多余写入）
       // 同会话同状态不重复更新（防刷屏）：写已经落定，这里只负责跳过终态清理的重排

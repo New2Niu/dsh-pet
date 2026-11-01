@@ -12,6 +12,7 @@ import { takeMenuEvents } from './menu-service.ts';
 import { getStateSnapshot } from './state-service.ts';
 import { dicts, makePetConfigSection, NS, petBridge } from './settings.ts';
 import { initNotify } from './notify.ts';
+import { installTurnCostBadges } from './turn-cost.ts';
 import { installCommandFaces, type CommandFace, type CommandUiLike } from './command-faces.ts';
 import { installSectionNavIcon } from './nav-icon.ts';
 import { registerPetChatTab, openPetChatTab } from './chat/register.ts';
@@ -101,6 +102,10 @@ export function makeFactory(): (require: (mod: string) => any) => any {
           }),
         'dsh-pet: notifications',
       );
+
+      // 对话界面「本轮花费」：在每条回复的「用量 20.5K tok」右侧补一句 ¥0.0021。
+      // 金额由宿主按轮算好（sections.turnCost），这里只在 DOM 层打标记 + ::after；DSH 改版即静默失效。
+      ctx.effect(() => installTurnCostBadges(), 'dsh-pet: turn cost badges');
 
       // /pet 选择框：选中后提交 /pet <id>，由 host 命令落地。
       // commandUi 已是服务依赖，但仍保留缺失时的降级提示。
