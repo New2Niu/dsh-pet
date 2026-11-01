@@ -3,9 +3,12 @@
  *
  * 为什么只能在 DOM 层做：DSH 的用量徽标是 ui-chat 内部组件（`TurnUsagePanel`），第三方只有
  * `conversation.chat.assistant-actions` 一个插槽，而它在徽标**左边**（actions 行里先渲染 extraActions，
- * 再渲染 `<span>[用量, 时间]</span>`）。要落在「用量右侧、时间左侧」，只能给徽标容器打一个属性、
- * 用 `::after` 画出来——和 nav-icon 一样只打 `data-*` 标记，不动 DOM 结构：React 会对自己创建的节点
- * 做 removeChild，插进去的节点迟早会把它惹毛。
+ * 再渲染 `<span>[用量, 时间]</span>`）。要落在「用量右侧」，只能给徽标容器打一个属性、用 `::after`
+ * 画出来——和 nav-icon 一样只打 `data-*` 标记，不动 DOM 结构：React 会对自己创建的节点做 removeChild，
+ * 插进去的节点迟早会把它惹毛。
+ *
+ * 视觉上不是「多一个数字」，而是把金额接成用量徽标的第二段：`用量 21K tok · ¥0.0021`，后面才是时间。
+ * 这也是 DSH 自己表达次级信息的方式（徽标内部就用「·」连接缓存命中率）。
  *
  * 金额由宿主算好（src/host/turn-costs）：它按轮次记 `sessionId → turn → ¥0.0021`，这里只做匹配与上色。
  * 认不出价目、或者这一轮早于本次启动，就没有属性、也就没有这一句——绝不在这里凭 token 数估算。
@@ -34,10 +37,20 @@ const USAGE_TRIGGER = 'button[aria-haspopup="dialog"]';
 /** 账本：sessionId → turn → 金额文本。 */
 export type TurnCostMap = Record<string, Record<string, string>>;
 
-/** 气泡里那套 `data-*` 与 `::after` 的样式，只注入一次。 */
+/**
+ * 金额的样式：当作用量徽标的**第二段**来画。
+ *
+ * DSH 自己的次级信息就是用「·」接在主页后面的（`reading()` 里那个 sep 圆点），这里沿用同一套语言：
+ * `用量 21K tok · ¥0.0021`，然后才是时间。分隔点用 `\00a0` 跟着不换行，负 4px 把金额收进按钮的
+ * 右侧内边距（8px），间距因此和徽标内部的 `gap:4px` 对齐——看着像一句话，而不是夹在中间的一串灰字。
+ * 字号、行高、数字对齐都抄徽标；颜色取次级文本而不是三级（三级太淡，和右边的时间糊在一起）。
+ */
 const COST_CSS =
-  '[data-dsh-pet-cost]::after{content:attr(data-dsh-pet-cost);margin-inline-start:.45em;' +
-  'font-size:inherit;font-variant-numeric:tabular-nums;color:currentColor;opacity:.62;white-space:nowrap}';
+  '[data-dsh-pet-cost]::after{content:"·\\00a0" attr(data-dsh-pet-cost);margin-inline-start:-4px;' +
+  'font-size:calc(var(--dsh-content-font-size-secondary,13px) - 1px);' +
+  'line-height:calc(24px + var(--dsh-content-font-delta,0px));' +
+  'font-variant-numeric:tabular-nums;font-weight:500;' +
+  'color:var(--dsw-alias-label-secondary,currentColor);white-space:nowrap}';
 
 /**
  * 从 /state 的 `sections.turnCost` 里取出账本；形状不对就当没有。
