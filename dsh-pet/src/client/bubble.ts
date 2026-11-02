@@ -249,7 +249,7 @@ const BALANCE_FADE_MS = 250;
 
 /** 制造余额气泡组件（工厂），注入样式一次。
  *  内容来自 shared 的 balancePageView（按页取行数据）；内置形态走行数据，
- *  custom 走第三方节点树。切页是淡出 → 换内容 → 淡入，显隐与 10s 计时归 pet.ts 管。
+ *  custom 走第三方节点树。切页是淡出 → 换内容 → 淡入，显隐与停留计时归气泡槽（bubble-slots）管。
  */
 export function makeBalanceBubble(rt: {
   h: typeof jsx;
@@ -261,7 +261,7 @@ export function makeBalanceBubble(rt: {
   on: boolean;
   /** 目标页：0 为初始页；内置 windows 形态下 0 收起、1 窗口明细、2 区间用量。 */
   index: number;
-  /** 点击气泡：上层切到下一页并重置 10s 计时器。 */
+  /** 点击气泡：上层切到下一页并重置停留计时。 */
   onCycle: () => void;
 }) => ReactNode {
   const { h, useState, useEffect } = rt;

@@ -42,7 +42,7 @@ describe('decideBubbleSlot —— 同一时刻只挂一个气泡', () => {
     assert.equal(decideBubbleSlot(input()), 'none');
   });
 
-  test('终态任务压过说话与余额：只活 10s，不让位', () => {
+  test('终态任务压过说话与余额：只活一个停留时长，不让位', () => {
     const slot = decideBubbleSlot(
       input({
         workTerminal: true,
@@ -63,7 +63,7 @@ describe('decideBubbleSlot —— 同一时刻只挂一个气泡', () => {
     assert.equal(slot, 'whisper');
   });
 
-  test('余额压过非终态任务：常驻任务让位 10s 没有损失', () => {
+  test('余额压过非终态任务：常驻任务让位没有损失', () => {
     const slot = decideBubbleSlot(input({ balanceOn: true, workOn: true, workText: '干活中' }));
     assert.equal(slot, 'balance');
   });

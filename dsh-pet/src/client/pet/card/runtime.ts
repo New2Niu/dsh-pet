@@ -7,6 +7,7 @@
  */
 import { pick } from '../../../shared/pickers.ts';
 import { postAction } from '../../../shared/state.ts';
+import { bubbleDurationMs } from '../../../shared/config.ts';
 import { ROUTE_PATH } from '../../../shared/constants.ts';
 import { resolveFontPx } from '../../../shared/fonts.ts';
 import { resolvePetSizePx } from '../../../shared/pet-size.ts';
@@ -122,11 +123,13 @@ export function createCardRuntime(rt: PetRuntime) {
     }, [cfg.position.corner, cfg.position.marginX, cfg.position.marginY]);
 
     // 四种气泡的单槽：显隐、停留计时与优先级都在 bubble-slots，这里只喂视图输入。
+    // 停留时长按本宠物的配置解一次（秒 → 毫秒，缺省/非法回落共享默认）。
     const bubbles = useBubbleSlots({
       assetRoot: cfg.assetRoot,
       balance,
       balanceEnabled: cfg.balanceEnabled,
       balanceManual,
+      bubbleDurationMs: bubbleDurationMs(cfg.bubbleDurationSec),
       workStatusEnabled: cfg.workStatusEnabled,
       workTerminal: workStatus?.state === 'success' || workStatus?.state === 'error',
     });

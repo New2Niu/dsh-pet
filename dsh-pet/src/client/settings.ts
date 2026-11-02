@@ -5,6 +5,7 @@
  * 保存与同步都全量写用户层，再把宿主返回的成品交给容器重渲染——两条路都无需刷新页面。
  * @module dsh-pet/src/client/settings
  */
+import { DEFAULT_BUBBLE_DURATION_SEC } from '../shared/config.ts';
 import { ROUTE_PATH } from '../shared/constants.ts';
 import { DEFAULT_FONT } from '../shared/fonts.ts';
 import { DEFAULT_PHYSICS } from '../shared/physics.ts';
@@ -159,6 +160,8 @@ export function makePetConfigSection(rt: SettingsRuntime): FunctionComponent<{ c
     const [chatMemory, setChatMemory] = useState(5);
     // 对话配图张数上限（全局默认）：初值 10 是内置默认（砍掉整张清单约 2/3 开销），加载后由成品值覆盖。
     const [chatImageLimit, setChatImageLimit] = useState(10);
+    // 气泡停留时长（全局默认，秒）：初值即内置默认，加载效应会用成品 main.bubbleDurationSec 覆盖。
+    const [bubbleDuration, setBubbleDuration] = useState(DEFAULT_BUBBLE_DURATION_SEC);
 
     // 首次读取与恢复默认必须更新同一组控件，避免下一次保存回写过期值。
     const applyConfig = useCallback(
@@ -185,6 +188,7 @@ export function makePetConfigSection(rt: SettingsRuntime): FunctionComponent<{ c
         if (patch.chatModel !== undefined) setChatModel(patch.chatModel);
         if (patch.chatMemoryRounds !== undefined) setChatMemory(patch.chatMemoryRounds);
         if (patch.chatImageLimit !== undefined) setChatImageLimit(patch.chatImageLimit);
+        if (patch.bubbleDurationSec !== undefined) setBubbleDuration(patch.bubbleDurationSec);
       },
       [replace],
     );
@@ -267,6 +271,7 @@ export function makePetConfigSection(rt: SettingsRuntime): FunctionComponent<{ c
         chatModel,
         chatMemoryRounds: chatMemory,
         chatImageLimit,
+        bubbleDurationSec: bubbleDuration,
         font,
       }),
       busy: () => busy,
@@ -331,7 +336,13 @@ export function makePetConfigSection(rt: SettingsRuntime): FunctionComponent<{ c
           onSave: () => void write.save(),
           onRemove: requestRemove,
         }),
-        h(GlobalCard, { busy, values: globalFlags, onChange: setGlobalFlag }),
+        h(GlobalCard, {
+          busy,
+          values: globalFlags,
+          onChange: setGlobalFlag,
+          bubbleDurationSec: bubbleDuration,
+          onBubbleDurationChange: setBubbleDuration,
+        }),
         h(VoiceCard, {
           busy,
           enabled: voiceEnabled,

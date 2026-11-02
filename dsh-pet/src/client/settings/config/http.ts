@@ -50,6 +50,8 @@ export interface SaveFields {
   chatModel: ModelSelection;
   chatMemoryRounds: number;
   chatImageLimit: number;
+  /** 气泡停留时长（秒）：整秒，1~3600。 */
+  bubbleDurationSec: number;
   font: FontConfig;
 }
 
@@ -85,6 +87,7 @@ export function buildSaveBody(fields: SaveFields): Record<string, unknown> {
     chatModel: fields.chatModel,
     chatMemoryRounds: fields.chatMemoryRounds,
     chatImageLimit: fields.chatImageLimit,
+    bubbleDurationSec: fields.bubbleDurationSec,
     font: fields.font,
   };
 }

@@ -6,6 +6,7 @@
  * @module dsh-pet/src/host/config/validate
  */
 import { FONT_SIZE_MAX, FONT_SIZE_MIN } from '../../shared/fonts.ts';
+import { isValidBubbleDurationSec } from '../../shared/config.ts';
 import { isKnownVoice } from '../voice/voices.ts';
 import { FONT_FAMILY_SET } from './constants.ts';
 
@@ -195,6 +196,10 @@ export function topFieldValid(key: string, value: unknown): boolean {
       return weightsValid(value);
     case 'eventsRefreshSec':
       return eventsRefreshSecValid(value);
+    case 'bubbleDurationSec':
+      // 气泡停留时长（全局默认，秒）：整秒且落在 shared 给定的区间内——
+      // 判定只有一份（与设置页、广播端点共用 isValidBubbleDurationSec），这里不另写一套范围。
+      return isValidBubbleDurationSec(value);
     case 'physics':
       return physicsValid(value);
     case 'font':

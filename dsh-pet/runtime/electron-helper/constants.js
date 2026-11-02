@@ -141,7 +141,13 @@ const POSE_REPORT_URL = BASE + '/pose/report';
 // 实况上报的节流间隔（ms）。sendBounds 在走位/抛掷时逐帧调用，必须合并；且必须带 trailing edge
 // （到点读当前值推一次），否则第三方读到的永远是走位中途的位置，且没有任何报错。
 const POSE_THROTTLE_MS = 400;
-const BUBBLE_DURATION_MS = 10 * 1000; // 余额/碎碎念气泡展示时长（与浏览器一致：定时消失，与动画解耦）
+// 气泡停留时长（ms）：按宠物读配置 bubbleDurationSec（缺省 5 秒，见 shared/config 的同名常量）。
+// 换算函数也用 shared 那一份（S.bubbleDurationMs），配置与默认值两端同源，不各写一个数字。
+// shared-core.js 是构建产物：本地跑着旧产物时这个函数可能还不存在，退回 5000 而不是让计时器炸掉。
+function bubbleMsOf(pet) {
+  if (typeof S.bubbleDurationMs !== 'function') return 5 * 1000;
+  return S.bubbleDurationMs(pet ? pet.bubbleDurationSec : undefined);
+}
 // 点击桌宠请宿主刷新余额的最短间隔（与浏览器同值）：点宠物是高频动作，每次点都打一次服务商
 // 接口既慢又可能被限流；这期间照旧用已有读数答复。
 const BALANCE_CLICK_GAP_MS = 60 * 1000;

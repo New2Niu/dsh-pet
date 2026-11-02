@@ -285,7 +285,7 @@ describe('readSay —— 说话叶子（弹气泡 / 清空 两种形态）', () 
     return hit && hit.kind === 'say' ? hit : null;
   };
 
-  test('弹气泡：文本与配图取到；不带 duration/anim/voiceTo 时三者都 undefined（= 老行为 10s + 联动 + 不念）', () => {
+  test('弹气泡：文本与配图取到；不带 duration/anim/voiceTo 时三者都 undefined（= 老行为：用配置的停留时长 + 联动 + 不念）', () => {
     assert.deepEqual(say({ text: '主人今天也要加油哦～', image: '可爱' }), {
       kind: 'say',
       text: '主人今天也要加油哦～',

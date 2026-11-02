@@ -116,6 +116,9 @@ export interface Pet {
   /** 全局默认：事件刷新周期（秒，事件名 → 间隔；整段替换，缺的键由消费端各自兜底）。
    *  .whisper 按所属条目读（种类可覆盖），.balance 只读 main 条目。 */
   eventsRefreshSec?: Record<string, number>;
+  /** 全局默认：气泡弹出后的停留时长（秒，1~3600，缺省 5）。
+   *  碎碎念 / 对话 / 余额 / 工作状态终态气泡共用这一个时长；接口显式给了 duration 的仍以接口为准。 */
+  bubbleDurationSec?: number;
   /** 全局默认：拖拽抛掷物理参数（用户写一次即对所有宠物生效，含 pet pack；种类文件顶层写了则用自己那份） */
   physics?: PhysicsParams;
   /** 全局默认：是否锁定在当前屏幕——抛掷与自主漫游都只在当前所在那块屏内活动 */
@@ -232,4 +235,6 @@ export interface ClientConfig {
   chatModel: ModelSelection;
   /** 事件刷新周期（秒）：事件名 → 间隔；balance = 余额数据刷新与动画触发间隔 */
   eventsRefreshSec: Record<string, number>;
+  /** 气泡弹出后的停留时长（秒，全局默认一份；缺省 5，取值域见 shared/config 的三个常量） */
+  bubbleDurationSec: number;
 }

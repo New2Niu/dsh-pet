@@ -8,7 +8,7 @@
 //   · 全局默认（本文件是默认值；用户在 main-config.jsonc 里写一次就对**所有宠物**生效，
 //     含 pet/<名>-config.json 定义的种类；种类文件自己写了则覆盖自己那份）：
 //     physics / font / confineToScreen / whisperImageEnabled / chatImageEnabled / chatAnimationEnabled /
-//     chatMemoryRounds / whisperModel / chatModel / eventsRefreshSec
+//     chatMemoryRounds / whisperModel / chatModel / eventsRefreshSec / bubbleDurationSec
 //   · 条目级（每个条目一份：main 一份、每个种类各一份；种类文件顶层可覆盖）：
 //     whisperPrompt / memes / workStatusTexts / animations / animationWeights
 //   · 只读 main（写了也只认 main 条目那份）：notificationsEnabled / eventsRefreshSec.balance
@@ -162,6 +162,13 @@
   // 也可在用户配置（main-config.jsonc）顶层覆盖，设置页「全局开关」里的托盘开关写的就是它。
   // 改动后保存即生效（宿主会重启桌面 Helper，桌面宠物窗口会重建一次）。
   "trayEnabled": true,
+  // ===================== 气泡停留时长（全局默认：用户层写一次对所有宠物生效；种类文件顶层可覆盖） =====================
+  // 气泡弹出后停留多久自动收起（整秒，1~3600，默认 5）。碎碎念、对话回复、余额、
+  // 工作状态的完成 / 出错提示共用这一个时长——够扫一眼，又不会一直挡着屏幕。
+  // 接口（POST /broadcast）显式给了 duration 的仍以接口为准，本项只管「没给时长时用多久」。
+  // 嫌看得太快就调大（如 10 / 15 / 30）；嫌挡视线可以调到 1~3。设置页「全局开关」卡有同名数字框。
+  // 缺失取默认 5；写了非法值（0 / 负数 / 小数 / 超范围）即配置错误 → 告警并取默认。
+  "bubbleDurationSec": 5,
   // ===================== 工作状态联动文案（条目级，与 animations/physics 同级；种类文件 pet/<名>-config.json 顶层可覆盖） =====================
   // 工作状态气泡文本（pets[].workStatusEnabled 开启时展示；仅在 events.workStatus 动画触发时弹）。
   // 结构 = 二维数组，外层索引即档位（与 events.workStatus 动画索引一一对应，勿在中间插入新档）：

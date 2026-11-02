@@ -141,9 +141,10 @@ paths:
           指令**——渲染端读它决定"要不要冻结自己"（随机链不掷骰、暂停当前自播动画、忽略**自动**
           来源的余额与工作状态表现），并按 `expiresAt` **自己**定时解除。详见 `LockLeaf`。
         - `pets.<id>.say` 有**两种形态**：弹气泡 `{ text, image?, duration?, anim? }` 与
-          清空 `{ "clear": true }`（由 `POST /bubble/clear` 写入）。`duration` 缺省 10 秒、
-          `0` = 不显示；`anim` 缺省 `true`（联动 `events.whisper` 动画），显式 `false` = 只弹气泡。
-          碎碎念与对话回复**不写**这两个字段，消费端按缺省处理——行为与改造前完全一致。
+          清空 `{ "clear": true }`（由 `POST /bubble/clear` 写入）。`duration` 缺省取配置的
+          `bubbleDurationSec`（默认 5 秒）、`0` = 不显示；`anim` 缺省 `true`（联动 `events.whisper`
+          动画），显式 `false` = 只弹气泡。
+          碎碎念与对话回复**不写**这两个字段，消费端按缺省处理（缺省时长同样来自配置）。
         - **`sections.config` 是配置变更信号**（`data` 恒为 `{}`，只看 `counter`）：它变了就说明配置
           被写过，消费端应重拉 `GET /config`。**当前写方是 `POST /pet-display`（桌面端右键改显示
           位置）与 `POST /pet-config`（整条目写回）**——两者都可能**不是发起页面自己**的配置改动，
@@ -399,8 +400,9 @@ paths:
           - `url`：**第三方自带的配图地址**，完整 URL，不查池——素材在调用方手里，池里当然没有。
             scheme 只放行 `http` / `https`（`file:` 会让桌面端渲染进程能读本地任意文件）。
           - **两个都给 → `bad-request`**：两种形态互斥，意图不明时不替调用方猜。
-        - `duration` 可选，气泡显示时长（毫秒）。缺省 `10000`；**`0` 是合法值**，字面意思
-          「不显示」（请求照常受理，只是不渲染）；负数 / `NaN` / `Infinity` / 非数字 → `bad-request`。
+        - `duration` 可选，气泡显示时长（毫秒）。**缺省取宿主的 `bubbleDurationSec`（默认 5000）**；
+          **`0` 是合法值**，字面意思「不显示」（请求照常受理，只是不渲染）；
+          负数 / `NaN` / `Infinity` / 非数字 → `bad-request`。
           **不设上限**——和内容、频率一样，由调用方自己负责；
         - `anim` 可选，是否联动一次 `events.whisper` 动画。缺省 `true`（= 老行为）。
           **只有严格 `false` 才关闭**（`"false"` 字符串之类一律按"要联动"处理）。关闭时渲染端
@@ -452,9 +454,9 @@ paths:
                 duration:
                   type: number
                   minimum: 0
-                  default: 10000
                   description: |
-                    气泡显示时长（毫秒）。缺省 `10000`；`0` = 字面意思「不显示」（合法值）。
+                    气泡显示时长（毫秒）。缺省取宿主的配置项 `bubbleDurationSec`（默认 `5000`）；
+                    `0` = 字面意思「不显示」（合法值）。
                     负数 / 非有限数 / 非数字 → `ok: false` + `reason: bad-request`。不设上限。
                   example: 3000
                 anim:
@@ -1353,7 +1355,7 @@ paths:
         - name: id
           in: path
           required: true
-          description: '`POST /anim` 响应里的 `playbackId`。'
+          description: "`POST /anim` 响应里的 `playbackId`。"
           schema:
             type: string
           example: pb-mfh2k1-1
@@ -1420,7 +1422,7 @@ paths:
         - name: id
           in: path
           required: true
-          description: '`playbackId`。'
+          description: "`playbackId`。"
           schema:
             type: string
           example: pb-mfh2k1-1
@@ -1435,7 +1437,7 @@ paths:
                 status:
                   type: string
                   enum: [playing, ended, failed, cancelled]
-                  description: '只接受这四个——`accepted` 是宿主受理态，上报它回 400。'
+                  description: "只接受这四个——`accepted` 是宿主受理态，上报它回 400。"
                 reason:
                   type: string
                   description: |
@@ -2856,7 +2858,7 @@ paths:
                   example: 1793000000000
       responses:
         "200":
-          description: '新建结果；正文为空 / 超长或 `dueAt` 非法时回 `ok: false` + `bad-request`'
+          description: "新建结果；正文为空 / 超长或 `dueAt` 非法时回 `ok: false` + `bad-request`"
           content:
             application/json:
               schema:
@@ -2924,7 +2926,7 @@ paths:
       tags: [Action]
       operationId: deleteTodo
       summary: 删除一条待办
-      description: '幂等：id 不存在也回 `ok: true`，`removed: 0`。'
+      description: "幂等：id 不存在也回 `ok: true`，`removed: 0`。"
       parameters:
         - $ref: "#/components/parameters/TodoIdPath"
       responses:
@@ -3974,7 +3976,8 @@ components:
           type: number
           minimum: 0
           description: |
-            气泡显示时长（毫秒）。**缺省 10 秒**（老 host 不写该字段时按 10 秒走）；
+            气泡显示时长（毫秒）。**缺省取配置的 `bubbleDurationSec`**（默认 5 秒）——
+            老 host 不写这个字段时，消费端同样按配置 / 默认时长走；
             `0` = 字面意思「不显示」（合法值，消费端不渲染这个气泡）。
             只有 `POST /broadcast` 会写这个字段（缺省也已填成显式值）；碎碎念与对话回复不写。
           example: 10000
@@ -4338,7 +4341,7 @@ components:
           $ref: "#/components/schemas/Todo"
         reason:
           type: string
-          description: '失败原因（如 `bad-request` / `todo-not-found`）'
+          description: "失败原因（如 `bad-request` / `todo-not-found`）"
         message:
           type: string
 
@@ -4351,5 +4354,3 @@ components:
         removed:
           type: integer
           description: 删掉的条数；0 = 本来就没有（幂等）
-
-

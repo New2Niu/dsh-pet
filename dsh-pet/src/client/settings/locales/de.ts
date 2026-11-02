@@ -124,6 +124,9 @@ export const de: Record<Key, string> = {
   notifyToggle: 'Systembenachrichtigungen',
   notifyToggleHint:
     'System-Toasts (unten rechts auf dem Desktop) bei Abschluss einer Konversation, Fehlern, Berechtigungsanfragen und Rückfragen – nur wenn das Fenster nicht fokussiert ist.',
+  bubbleDuration: 'Sprechblasen-Dauer (s)',
+  bubbleDurationHint:
+    'Wie lange eine Sprechblase sichtbar bleibt, bevor sie verschwindet (ganze Sekunden, 1-3600, Standard 5). Gilt für Flüstern, Chat, Guthaben und Aufgaben-Hinweise; eine von der API gesetzte Dauer hat Vorrang.',
   clickSoundToggle: 'Klick-Sound',
   clickSoundToggleHint:
     'Beim Klick auf ein Pet ertönt der integrierte Klick-Sound (assets/sound/click-duck.wav, Lautstärke 0.5); Klicks innerhalb von 100 ms werden nur einmal abgespielt, auch bei mehreren Pets überlagert sich nichts. Aus = völlig stumm. Wird beim „Speichern" in die Benutzerkonfiguration geschrieben.',

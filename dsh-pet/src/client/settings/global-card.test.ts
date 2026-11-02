@@ -1,9 +1,10 @@
 /**
  * 全局开关卡（src/client/settings/global-card.ts）的契约测试。
  *
- * 两条契约：
+ * 三条契约：
  *   1. 四个开关的勾选态来自 `values`，切换回传的是配置字段名（键名错位会静默写坏别的开关）；
- *   2. 忙时全部禁用，一次切换只回调一次。
+ *   2. 气泡停留时长是一个数字框，失焦提交回秒数（不是布尔，也不该跟开关混在同一排）；
+ *   3. 忙时全部控件禁用，一次切换只回调一次。
  */
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -33,14 +34,28 @@ const allOff: GlobalFlags = {
   trayEnabled: false,
 };
 
-/** 四个开关的框，顺序即展示顺序。 */
-const boxes = (tree: unknown): Node[] => flatten(tree).filter((node) => node.tag === 'input');
+/** 卡里全部 `<input>`。 */
+const inputs = (tree: unknown): Node[] => flatten(tree).filter((node) => node.tag === 'input');
+
+/** 四个勾选框，顺序即展示顺序。 */
+const boxes = (tree: unknown): Node[] => inputs(tree).filter((node) => node.props.type === 'checkbox');
+
+/** 气泡停留的秒数输入框（卡里唯一的数字框）。 */
+const durationBox = (tree: unknown): Node => inputs(tree).find((node) => node.props.type === 'number') as Node;
+
+/** 一次「改了数字再失焦」：走 numberInputProps 的提交口径。 */
+const commitNumber = (box: Node, text: string): void => {
+  const target = { value: text };
+  (box.props.onBlur as (e: { target: { value: string } }) => void)({ target });
+};
 
 describe('GlobalCard —— 全局开关卡', () => {
   test('四个开关都在，勾选态来自 values', () => {
     const tree = GlobalCard({
       busy: false,
       values: { ...allOff, notificationsEnabled: true, trayEnabled: true },
+      bubbleDurationSec: 15,
+      onBubbleDurationChange: () => {},
       onChange: () => {},
     } as never);
     const found = boxes(tree);
@@ -56,6 +71,8 @@ describe('GlobalCard —— 全局开关卡', () => {
     const tree = GlobalCard({
       busy: false,
       values: allOff,
+      bubbleDurationSec: 15,
+      onBubbleDurationChange: () => {},
       onChange: (key: string, value: boolean) => seen.push([key, value]),
     } as never);
     for (const box of boxes(tree)) {
@@ -71,8 +88,47 @@ describe('GlobalCard —— 全局开关卡', () => {
     );
   });
 
-  test('忙时全部禁用', () => {
-    const tree = GlobalCard({ busy: true, values: allOff, onChange: () => {} } as never);
-    for (const box of boxes(tree)) assert.equal(box.props.disabled, true);
+  test('停留时长是一个数字框：显示当前秒数，带上区间', () => {
+    const tree = GlobalCard({
+      busy: false,
+      values: allOff,
+      bubbleDurationSec: 30,
+      onBubbleDurationChange: () => {},
+      onChange: () => {},
+    } as never);
+    const box = durationBox(tree);
+    assert.ok(box, '卡里必须有且有一个数字框（停留时长）');
+    assert.equal(box.props.defaultValue, '30');
+    assert.equal(box.props.min, '1');
+    assert.equal(box.props.max, '3600');
+  });
+
+  test('数字框失焦提交秒数；空串放弃这次编辑（不回传 0）', () => {
+    const seen: number[] = [];
+    const tree = GlobalCard({
+      busy: false,
+      values: allOff,
+      bubbleDurationSec: 15,
+      onBubbleDurationChange: (value: number) => seen.push(value),
+      onChange: () => {},
+    } as never);
+    commitNumber(durationBox(tree), '25');
+    assert.deepEqual(seen, [25]);
+    // 空串与脏值由 numberInputProps 丢掉：它们都不该变成 0 写进配置（0 = 永不收起）
+    commitNumber(durationBox(tree), '');
+    commitNumber(durationBox(tree), 'abc');
+    commitNumber(durationBox(tree), '15');
+    assert.deepEqual(seen, [25], '只有真的变了才回调');
+  });
+
+  test('忙时全部控件禁用', () => {
+    const tree = GlobalCard({
+      busy: true,
+      values: allOff,
+      bubbleDurationSec: 15,
+      onBubbleDurationChange: () => {},
+      onChange: () => {},
+    } as never);
+    for (const input of inputs(tree)) assert.equal(input.props.disabled, true);
   });
 });

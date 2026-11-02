@@ -41,7 +41,8 @@ const decide = (over: Partial<Parameters<typeof decideBroadcast>[0]> = {}) =>
     text: '主人，该喝水了',
     image: undefined,
     url: undefined,
-    duration: 10000,
+    // undefined = 调用方没给时长：由配置的 bubbleDurationSec 兜底（与本文件下面几条一一对应）
+    duration: undefined,
     anim: true,
     memeDirs: () => [memesDir],
     ...over,
@@ -218,9 +219,9 @@ describe('decideBroadcast —— 配图只认该桌宠条目的表情包池', ()
 });
 
 describe('normalizeBroadcastDuration —— 气泡时长（issue #122 第 5 条）', () => {
-  test('缺省 / null → 10s（老调用方的行为一个字不变）', () => {
-    assert.equal(normalizeBroadcastDuration(undefined), 10000);
-    assert.equal(normalizeBroadcastDuration(null), 10000);
+  test('缺省 / null → undefined（= 用配置的 bubbleDurationSec，决定层才解析）', () => {
+    assert.equal(normalizeBroadcastDuration(undefined), undefined);
+    assert.equal(normalizeBroadcastDuration(null), undefined);
   });
 
   test('合法值原样透出；`0` 是合法值（字面意思：不显示）；不设上限', () => {
@@ -250,11 +251,24 @@ describe('normalizeBroadcastAnim —— 动画联动开关（只有严格 false 
 });
 
 describe('decideBroadcast —— 新参数原样进入结论（写进叶子的是解析后的生效值）', () => {
-  test('缺省解析成显式值：10s + 联动', () => {
+  test('缺省解析成显式值：配置的停留时长 + 联动', () => {
     const d = decide();
     assert.equal(d.ok, true);
-    assert.equal(d.ok === true && d.duration, 10000);
+    // 本夹具的 main 没写 bubbleDurationSec → shared 的默认时长
+    assert.equal(d.ok === true && d.duration, 5000);
     assert.equal(d.ok === true && d.anim, true);
+  });
+
+  test('配置写了 bubbleDurationSec：缺省时长跟着配置走', () => {
+    const withCfg = { ...cfg, main: { ...cfg.main, bubbleDurationSec: 30 } };
+    const d = decide({ cfg: withCfg });
+    assert.equal(d.ok === true && d.duration, 30000);
+  });
+
+  test('调用方显式给的时长压过配置（接口优先，配置只管缺省）', () => {
+    const withCfg = { ...cfg, main: { ...cfg.main, bubbleDurationSec: 30 } };
+    const d = decide({ cfg: withCfg, duration: 2000 });
+    assert.equal(d.ok === true && d.duration, 2000);
   });
 
   test('调用方给的值原样带出（含 duration=0 与 anim=false）', () => {

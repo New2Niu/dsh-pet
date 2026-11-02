@@ -15,10 +15,13 @@ import { findPetInstance } from './config.ts';
 import { matchMeme, readMemePool } from './memes.ts';
 // url 参数的 scheme 规则与 /anim 是同一条（两个「第三方投喂」端点不各写一份，免得走样）
 import { normalizeHttpUrl } from './anim.ts';
+import { bubbleDurationMs } from '../shared/config.ts';
 
-/** 气泡默认显示时长（ms）——与两端消费侧的常量同值（host 不得 import src/shared，只能各写一份）。
- *  它只用于把缺省解析成显式值写进叶子，让 /state 里能看到实际生效的时长。 */
-const DEFAULT_BUBBLE_DURATION_MS = 10 * 1000;
+/** 某个条目的默认气泡时长（ms）：缺省取配置的 `bubbleDurationSec`。
+ *  它在写叶子时被填成显式值，于是 /state 里能看到实际生效的时长，调用方不用自己猜缺省是多少。 */
+export function configBubbleDurationMs(cfg: Record<string, Record<string, unknown>>): number {
+  return bubbleDurationMs(cfg.main?.bubbleDurationSec);
+}
 
 /** pet 参数解析失败的两种分类（三个「pet 必填」端点共用这一对词汇，与 ./anim、./motion-cue 同口径）。 */
 export type PetFailure = 'pet-required' | 'unknown-pet';
@@ -41,10 +44,11 @@ export function normalizeBroadcastText(text: unknown): string {
   return typeof text === 'string' ? text.trim() : '';
 }
 
-/** 气泡时长规范化：缺省 / null → 默认 10s；合法则原样；非法（非数字 / 非有限 / 负数）返回 null。
+/** 气泡时长规范化：缺省 / null → `undefined`（= 用配置里的 `bubbleDurationSec`，在决定层才解析）；
+ *  合法则原样；非法（非数字 / 非有限 / 负数）返回 null。
  *  路由先用它短路，别为一个必然失败的请求去碰磁盘；0 合法，字面意思「不显示」。 */
-export function normalizeBroadcastDuration(duration: unknown): number | null {
-  if (duration === undefined || duration === null) return DEFAULT_BUBBLE_DURATION_MS;
+export function normalizeBroadcastDuration(duration: unknown): number | undefined | null {
+  if (duration === undefined || duration === null) return undefined;
   if (typeof duration !== 'number' || !Number.isFinite(duration) || duration < 0) return null;
   return duration;
 }
@@ -79,7 +83,8 @@ function resolvePetId(
  *
  * 配图两种形态二选一：image = 池内名称（命中后取池里的规范名），url = 第三方自带地址（不查池）。
  * @param args - 投喂参数：`cfg` 为成品配置；`requested` 是 `?pet=` 原值（空串 → `pet-required`）；
- *   `duration` 与 `anim` 已由路由规范化；`memeDirs` 把素材根映射成表情包目录链（顺序即优先级）。
+ *   `duration` 已由路由规范化（`undefined` = 调用方没给，用配置的 `bubbleDurationSec`）、`anim` 同理；
+ *   `memeDirs` 把素材根映射成表情包目录链（顺序即优先级）。
  */
 export function decideBroadcast(args: {
   cfg: Record<string, Record<string, unknown>>;
@@ -88,11 +93,13 @@ export function decideBroadcast(args: {
   text: unknown;
   image: unknown;
   url: unknown;
-  duration: number;
+  duration: number | undefined;
   anim: boolean;
   memeDirs: (entry: string) => string[];
 }): BroadcastDecision {
   const { cfg, requested, memeDirs } = args;
+  // 缺省时长在决定层才解析：它来自配置，而路由要在读盘之前就把「非法 duration」挡掉。
+  const duration = args.duration ?? configBubbleDurationMs(cfg);
 
   const text = normalizeBroadcastText(args.text);
   if (!text) return { ok: false, reason: 'bad-request', message: 'text 为空' };
@@ -104,7 +111,7 @@ export function decideBroadcast(args: {
   const rawImage = typeof args.image === 'string' ? args.image.trim() : '';
   const rawUrl = typeof args.url === 'string' ? args.url.trim() : '';
   if (rawImage && rawUrl) return { ok: false, reason: 'bad-request', message: 'image 与 url 只能给一个' };
-  if (!rawImage && !rawUrl) return { ok: true, petId, text, duration: args.duration, anim: args.anim };
+  if (!rawImage && !rawUrl) return { ok: true, petId, text, duration, anim: args.anim };
 
   // url 形态：地址合法即放行，不查表情包池——图在第三方手里，池里当然没有；取不到图由消费端
   // 自己表现（图裂），宿主不做代理、也不预取，所以这里没有可校验的「图是否真实存在」。
@@ -113,7 +120,7 @@ export function decideBroadcast(args: {
     if (url === null) {
       return { ok: false, reason: 'bad-request', message: 'url 必须是 http/https 的完整地址' };
     }
-    return { ok: true, petId, text, url, duration: args.duration, anim: args.anim };
+    return { ok: true, petId, text, url, duration, anim: args.anim };
   }
 
   // 配图只认池内命中的名称（命中后用池里的规范名，而不是外部原样传入的字符串）；
@@ -122,7 +129,7 @@ export function decideBroadcast(args: {
   if (!hit) {
     return { ok: false, reason: 'unknown-image', message: '配图不在表情包池内：' + rawImage };
   }
-  return { ok: true, petId, text, image: hit.name, duration: args.duration, anim: args.anim };
+  return { ok: true, petId, text, image: hit.name, duration, anim: args.anim };
 }
 
 /**

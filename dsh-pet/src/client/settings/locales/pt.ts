@@ -124,6 +124,9 @@ export const pt: Record<Key, string> = {
   notifyToggle: 'Notificações do sistema',
   notifyToggleHint:
     'Avisos do sistema (canto inferior direito do desktop) para fim de conversa, falhas, pedidos de permissão e perguntas — só enquanto esta janela está sem foco.',
+  bubbleDuration: 'Duração do balão (s)',
+  bubbleDurationHint:
+    'Quanto tempo o balão fica visível antes de sumir (segundos inteiros, 1-3600, padrão 5). Vale para sussurros, chat, saldo e avisos de tarefa; uma duração enviada pela API tem prioridade.',
   clickSoundToggle: 'Som de clique',
   clickSoundToggleHint:
     'Toca o som de clique embutido (assets/sound/click-duck.wav, volume 0.5) quando o pet é clicado; cliques repetidos em até 100ms tocam uma vez só, então vários pets não empilham som. Desligue para silêncio total. Gravado na configuração do usuário junto com o "Salvar".',

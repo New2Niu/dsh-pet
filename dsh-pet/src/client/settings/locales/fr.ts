@@ -125,6 +125,9 @@ export const fr: Record<Key, string> = {
   notifyToggle: 'Notifications système',
   notifyToggleHint:
     "Notifications du système d'exploitation (en bas à droite du bureau) pour la fin d'une conversation, les échecs, les demandes de permission et les questions — uniquement lorsque cette fenêtre n'a pas le focus.",
+  bubbleDuration: 'Durée de la bulle (s)',
+  bubbleDurationHint:
+    "Temps d'affichage d'une bulle avant sa disparition (secondes entières, 1-3600, 5 par défaut). Commun aux murmures, au chat, au solde et aux avis de tâche ; une durée fournie par l'API reste prioritaire.",
   clickSoundToggle: 'Son au clic',
   clickSoundToggleHint:
     "Joue le son intégré (assets/sound/click-duck.wav, volume 0,5) quand on clique sur un compagnon ; les clics répétés en moins de 100 ms ne sonnent qu'une fois, donc plusieurs compagnons ne se superposent jamais. Désactivez-le pour un silence total. Écrit dans la configuration utilisateur avec « Enregistrer ».",

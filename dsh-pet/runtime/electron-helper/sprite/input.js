@@ -400,7 +400,7 @@ Object.assign(PetSprite.prototype, {
     if (this.pet.balanceEnabled) {
       // 用户点了宠物：这一眼要压过此刻正挂着的说话与任务气泡（待办在桌面端是独立浮层，不受影响）。
       this.balanceForced = true;
-      // 被顶掉的说话与终态任务顺手收起来：都是一次性的一句话 / 通知，十秒后再冒回来只会让人困惑。
+      // 被顶掉的说话与终态任务顺手收起来：都是一次性的一句话 / 通知，过一会儿再冒回来只会让人困惑。
       // 非终态任务保留：那是常驻状态，本来就在余额之下。
       if (this.whisperOn) this.clearWhisper();
       if (this.workOn && (this.workState === 'success' || this.workState === 'error')) {

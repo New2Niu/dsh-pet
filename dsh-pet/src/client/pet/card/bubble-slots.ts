@@ -51,7 +51,7 @@ export interface BubbleSlotInput {
 /**
  * 决定当前挂哪个气泡。
  *
- * 终态任务只活 10s，所以默认不让位；非终态常驻，让位 10s 没有损失。
+ * 终态任务只活一个停留时长（见配置 bubbleDurationSec），所以默认不让位；非终态常驻，让位零损失。
  * 例外是「用户点出来的余额气泡」：那是刚刚主动要的一眼，压过说话与任务气泡（待办面板仍独占）。
  *
  * @param input - 三种气泡的显隐与开关。
@@ -138,6 +138,9 @@ export interface BubbleSlotsInput {
   workTerminal: boolean;
   /** 说话气泡配图的素材根。 */
   assetRoot?: string;
+  /** 气泡停留时长（ms）：来自配置 `bubbleDurationSec`，由卡片用 shared 的 bubbleDurationMs 解出。
+   *  缺省 / 非法（≤0、非有限数）时回落到 {@link BUBBLE_DURATION_MS}。 */
+  bubbleDurationMs?: number;
 }
 
 /** 气泡单槽对外的读写面。 */
@@ -157,7 +160,7 @@ export interface BubbleSlots {
   clearWhisper(): void;
   /** 更新工作气泡文本，显隐不动。 */
   updateWorkText(text: string | null): void;
-  /** 点亮工作气泡；terminal 决定 10s 后自动收起，非终态常驻。 */
+  /** 点亮工作气泡；terminal 决定一个停留时长后自动收起，非终态常驻。 */
   lightWork(terminal: boolean): void;
   /** 收起工作气泡但保留文本。 */
   hideWork(): void;
@@ -187,6 +190,13 @@ export function createBubbleSlots(rt: BubbleSlotsRuntime, components: BubbleComp
   const WhisperBubble = components.whisperBubble;
 
   return function useBubbleSlots(input: BubbleSlotsInput): BubbleSlots {
+    // 本宠物的停留时长：配置给的秒数已换成毫秒；没有 / 非法时用兜底值，计时器永不拿到 0。
+    const holdMs =
+      typeof input.bubbleDurationMs === 'number' &&
+      Number.isFinite(input.bubbleDurationMs) &&
+      input.bubbleDurationMs > 0
+        ? input.bubbleDurationMs
+        : BUBBLE_DURATION_MS;
     // 余额气泡：显隐与展开页。
     const [balanceOn, setBalanceOn] = useState(false);
     const [balancePage, setBalancePage] = useState(0);
@@ -228,13 +238,13 @@ export function createBubbleSlots(rt: BubbleSlotsRuntime, components: BubbleComp
         setBalanceOn(false);
         // 收起即恢复原优先级：还在进行中的非终态任务气泡会自己回来。
         setBalanceForced(false);
-      }, BUBBLE_DURATION_MS);
+      }, holdMs);
     };
 
     const cycleBalance = () => {
       const pages = balancePageCount(input.balance);
       setBalancePage((page) => (page + 1) % pages);
-      // 重新计时：第 8 秒点开才剩 2 秒，看不清下一页。
+      // 重新计时：在停留时长的尾巴上点开才剩一两秒，看不清下一页。
       armBalanceTimeout();
     };
 
@@ -245,7 +255,8 @@ export function createBubbleSlots(rt: BubbleSlotsRuntime, components: BubbleComp
       setWhisperUrl(parts.url);
       setWhisperOn(true);
       if (whisperTimerRef.current !== null) window.clearTimeout(whisperTimerRef.current);
-      whisperTimerRef.current = window.setTimeout(() => setWhisperOn(false), duration ?? BUBBLE_DURATION_MS);
+      // 接口显式给了 duration 就以它为准（第三方投喂 / 待办提醒都靠这条），没给才用配置时长。
+      whisperTimerRef.current = window.setTimeout(() => setWhisperOn(false), duration ?? holdMs);
     };
 
     const clearWhisper = () => {
@@ -260,7 +271,7 @@ export function createBubbleSlots(rt: BubbleSlotsRuntime, components: BubbleComp
       setWorkOn(true);
       if (workTimerRef.current !== null) window.clearTimeout(workTimerRef.current);
       // 非终态常驻，不设自动收起。
-      workTimerRef.current = terminal ? window.setTimeout(() => setWorkOn(false), BUBBLE_DURATION_MS) : null;
+      workTimerRef.current = terminal ? window.setTimeout(() => setWorkOn(false), holdMs) : null;
     };
 
     const hideWork = () => {
@@ -278,7 +289,7 @@ export function createBubbleSlots(rt: BubbleSlotsRuntime, components: BubbleComp
      * 点亮余额气泡。
      *
      * force 是「用户刚点了宠物」：这一眼要压过此刻正挂着的说话与终态任务气泡，并且把被顶掉的那两个
-     * 真的收起来——它们是「说过的一句话」「一次性通知」，十秒后再冒回来只会让人困惑。
+     * 真的收起来——它们是「说过的一句话」「一次性通知」，过一会儿再冒回来只会让人困惑。
      * 非终态任务不在此列：那是常驻状态，且本来就在余额之下。
      */
     const showBalance = (options?: { force?: boolean }) => {

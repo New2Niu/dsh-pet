@@ -237,9 +237,11 @@ describe('buildSaveBody —— 请求体字段', () => {
       chatModel: { provider: '', model: '' },
       chatMemoryRounds: 5,
       chatImageLimit: 10,
+      bubbleDurationSec: 15,
       font: {},
     } as unknown as SaveFields;
     assert.deepEqual(Object.keys(buildSaveBody(fields)).sort(), [
+      'bubbleDurationSec',
       'chatAnimationEnabled',
       'chatImageEnabled',
       'chatImageLimit',
@@ -276,11 +278,14 @@ describe('buildSaveBody —— 请求体字段', () => {
       chatModel: { provider: '', model: '' },
       chatMemoryRounds: 0,
       chatImageLimit: 3,
+      bubbleDurationSec: 20,
       font: { size: 20 },
     } as unknown as SaveFields;
     const body = buildSaveBody(fields);
     assert.equal(body.chatMemoryRounds, 0);
     assert.deepEqual(body.physics, { gravity: 3 });
     assert.equal(body.notificationsEnabled, false);
+    // 秒数原样提交：宿主按整秒区间再校验一次，这里不替它取整或夹取
+    assert.equal(body.bubbleDurationSec, 20);
   });
 });

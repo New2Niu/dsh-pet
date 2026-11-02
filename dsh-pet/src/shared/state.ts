@@ -170,7 +170,8 @@ export function readBalance(leaf: StateLeaf): { state: BalanceState; manual: boo
 }
 
 /** 说话指令（`pets.<id>.say` 的两种形态）。
- *  say：弹一个气泡，duration = 显示时长（毫秒；缺省 10s，0 = 字面意思「不显示」），
+ *  say：弹一个气泡，duration = 显示时长（毫秒；缺省取配置的 bubbleDurationSec（默认 5 秒），
+ *  0 = 字面意思「不显示」），
  *  anim 只在显式 false 时出现，表示这次不联动 events.whisper 动画、只弹气泡。
  *  clear：收起当前气泡（POST /bubble/clear 的落点），必须是单独形态——空文本会被判成非法、整拍跳过。
  *  配图两种形态并列、由字段名区分：image = 表情包池内的名称（消费端拼图片路径），url = 第三方给的完整地址。
@@ -194,7 +195,7 @@ export type VoiceTarget = 'web' | 'desktop';
 
 /** 类型收窄：宠物说话叶子 → SayCue（形状非法或空文本 → null，消费端跳过这一拍）。
  *  碎碎念、命令气泡、对话回复共用这一个叶子——前端本来就是同一条展示链路。
- *  duration 与 anim 缺省即默认行为（10s + 联动），不写这两个字段的叶子照常能读。 */
+ *  duration 与 anim 缺省即默认行为（配置的停留时长 + 联动），不写这两个字段的叶子照常能读。 */
 export function readSay(leaf: StateLeaf): SayCue | null {
   if (!leaf.data || typeof leaf.data !== 'object') return null;
   const d = leaf.data as {

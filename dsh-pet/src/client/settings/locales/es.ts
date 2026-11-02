@@ -127,6 +127,9 @@ export const es: Record<Key, string> = {
   notifyToggle: 'Notificaciones del sistema',
   notifyToggleHint:
     'Avisos del sistema operativo (abajo a la derecha del escritorio) al completarse una conversación, si falla la generación, cuando se solicita permiso o cuando hay que elegir; solo mientras esta ventana no tiene el foco.',
+  bubbleDuration: 'Duración del bocadillo (s)',
+  bubbleDurationHint:
+    'Cuánto tiempo permanece un bocadillo antes de ocultarse (segundos enteros, 1-3600, por defecto 5). Lo comparten susurros, chat, saldo y avisos de tarea; si la API indica una duración, prevalece esa.',
   clickSoundToggle: 'Sonido al hacer clic',
   clickSoundToggleHint:
     'Reproduce el sonido de clic integrado (assets/sound/click-duck.wav, volumen 0.5) al hacer clic en una mascota; los clics repetidos en menos de 100 ms solo suenan una vez, así que varias mascotas nunca se superponen. Desactívalo para silencio total. Se escribe en la configuración del usuario al Guardar.',

@@ -4,6 +4,7 @@
  * 与写方向（`http.ts`）分开：这里纯解析，不发请求、不碰状态。
  * @module dsh-pet/src/client/settings/config/read
  */
+import { isValidBubbleDurationSec } from '../../../shared/config.ts';
 import { DEFAULT_FONT } from '../../../shared/fonts.ts';
 import { DEFAULT_PHYSICS } from '../../../shared/physics.ts';
 import type { FontConfig, ModelSelection, Pet, PhysicsParams } from '../../../shared/types.ts';
@@ -41,6 +42,8 @@ export interface MainConfigPatch {
   chatModel?: ModelSelection;
   chatMemoryRounds?: number;
   chatImageLimit?: number;
+  /** 气泡停留时长（秒）：宿主已按 shared 的区间校验过，客户端原样展示。 */
+  bubbleDurationSec?: number;
 }
 
 /** 非负有限数才算合法；其余（`NaN`、负数、字符串）一律当作没写。 */
@@ -96,6 +99,8 @@ export function readMainConfig(merged: MergedConfig): MainConfigPatch | null {
   if (rounds !== undefined) patch.chatMemoryRounds = rounds;
   const limit = nonNegative(main.chatImageLimit);
   if (limit !== undefined) patch.chatImageLimit = limit;
+  // 停留时长按整秒区间判（与宿主读写同一份规则）；非法值当没写，保留表单手里的值。
+  if (isValidBubbleDurationSec(main.bubbleDurationSec)) patch.bubbleDurationSec = Number(main.bubbleDurationSec);
   return patch;
 }
 

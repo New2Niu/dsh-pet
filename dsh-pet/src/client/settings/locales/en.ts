@@ -124,6 +124,9 @@ export const en: Record<Key, string> = {
   notifyToggle: 'System notifications',
   notifyToggleHint:
     'OS-level toasts (bottom-right of the desktop) for conversation completion, failures, permission requests, and questions — only while this window is unfocused.',
+  bubbleDuration: 'Bubble duration (s)',
+  bubbleDurationHint:
+    'How long a bubble stays visible before hiding (whole seconds, 1-3600, default 5). Shared by whisper, chat, balance and task hints; an explicit duration from the API still wins.',
   clickSoundToggle: 'Click sound',
   clickSoundToggleHint:
     'Plays the built-in click sound (assets/sound/click-duck.wav, volume 0.5) when a pet is clicked; repeated clicks within 100ms play only once, so multiple pets never stack up. Turn it off for silence. Written to the user config together with Save.',

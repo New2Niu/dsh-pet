@@ -104,7 +104,7 @@ export async function handleInteractionRoutes(deps: PetRouteDeps, input: RouteIn
   // text 必填且 trim 后非空（不设长度限制、不限频：内容与频率由调用方负责）；pet 必填且须存在。
   // image / url 二选一：image 只认该条目表情包池内的名称，url 是第三方自带的完整地址、不查池，
   // scheme 由宿主卡在 http/https；宿主不做代理（跨域由浏览器强制）。
-  // duration 缺省 10s、0 = 不显示、负数/非有限数拒绝；anim 只有严格 false 才关闭。
+  // duration 缺省取配置里的 `bubbleDurationSec`、0 = 不显示、负数/非有限数拒绝；anim 只有严格 false 才关闭。
   if (rest === 'broadcast') {
     if (method !== 'POST') return methodNotAllowed();
     let parsed: unknown;
@@ -116,7 +116,7 @@ export async function handleInteractionRoutes(deps: PetRouteDeps, input: RouteIn
     const o = parsed && typeof parsed === 'object' ? (parsed as Record<string, unknown>) : {};
     // 空文本不需要读配置就能判定：先短路，别为一个必然失败的请求去碰磁盘
     if (!normalizeBroadcastText(o.text)) return failResult('bad-request', 'text 为空');
-    // duration 同理：判定不需要配置，先短路（anim 没有非法值，宽松口径下永远有结论）
+    // duration 同理：形状判定不需要配置，先短路（缺省 undefined = 用配置的时长，决定层才解析）
     const duration = normalizeBroadcastDuration(o.duration);
     if (duration === null) return failResult('bad-request', 'duration 必须是 ≥0 的有限数字（毫秒）');
     const anim = normalizeBroadcastAnim(o.anim);

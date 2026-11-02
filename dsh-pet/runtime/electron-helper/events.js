@@ -9,7 +9,8 @@
 'use strict';
 
 // 工作状态联动：容器每秒轮询 /state，counter 变化才递增 tick，各宠物按 workStatusEnabled 门控。
-// 气泡驻留：thinking/working/result/waiting 常驻到状态切走，success/error 10s 自动收起，state=null 收起。
+// 气泡驻留：thinking/working/result/waiting 常驻到状态切走，success/error 按配置的气泡时长自动收起，
+// state=null 收起。
 // 动画：进行中档位循环播，终态播一遍回 idle 链；回空闲时把正在循环的那段改成「播完即停」。
 PetSprite.prototype.onWorkTick = function onWorkTick(snapshot, tick) {
   if (!this.pet.workStatusEnabled) return; // 未启用工作状态联动 -> 该宠物完全免疫（与浏览器一致）
@@ -88,7 +89,7 @@ PetSprite.prototype.onWorkTick = function onWorkTick(snapshot, tick) {
       ? window.setTimeout(() => {
           this.workOn = false;
           this.renderBubble();
-        }, BUBBLE_DURATION_MS)
+        }, bubbleMsOf(this.pet))
       : null; // 非终态：常驻，不设自动收起
   }
   this.renderBubble();
@@ -122,7 +123,7 @@ PetSprite.prototype.showBalanceNotice = function showBalanceNotice(state, manual
   if (!state || state.ok) return;
   this.bubbleOn = true;
   this.balanceWrap = true; // 文字说明可能多行：renderBubble 据此套用紧凑变体（字号缩到 0.75、宽度下限更窄）
-  // 换成文字说明：这一轮不再是「用户点出来的余额读数」，优先级回到常规（说明只活 10s，不占别人的位）。
+  // 换成文字说明：这一轮不再是「用户点出来的余额读数」，优先级回到常规（说明只活一个气泡时长，不占别人的位）。
   this.balanceForced = false;
   this.balanceView = S.balanceBubbleView(state);
   this.balanceState = state; // 留着：不可用状态不可展开，但要防止上一次的余额读数残留在字段里
@@ -132,7 +133,7 @@ PetSprite.prototype.showBalanceNotice = function showBalanceNotice(state, manual
   this.bubbleTimer = window.setTimeout(() => {
     this.bubbleOn = false;
     this.renderBubble();
-  }, BUBBLE_DURATION_MS);
+  }, bubbleMsOf(this.pet));
 };
 
 // 碎碎念 / 命令气泡 / 对话回复 / 清空走同一条通道：都写进 S 的 pets.<id>.say，
@@ -191,14 +192,17 @@ PetSprite.prototype.showWhisper = function showWhisper(text, image, url, duratio
   this.renderBubble();
   // 气泡定时消失（与动画解耦，与余额同一语义；重复触发先清旧定时器）
   if (this.whisperTimer !== null) window.clearTimeout(this.whisperTimer);
-  this.whisperTimer = window.setTimeout(() => {
-    this.whisperOn = false;
-    this.renderBubble();
-  }, duration ?? BUBBLE_DURATION_MS);
+  this.whisperTimer = window.setTimeout(
+    () => {
+      this.whisperOn = false;
+      this.renderBubble();
+    },
+    duration ?? bubbleMsOf(this.pet),
+  );
 };
 
 // 只弹余额气泡、不换动画：点击查看时先用上一次读数给反馈（与浏览器一致：点击先亮气泡，
-// 刷新结果到了再由 showBalanceNow 接手）。显隐与 10s 定时和正常余额气泡同一套。
+// 刷新结果到了再由 showBalanceNow 接手）。显隐与定时和正常余额气泡同一套（时长取配置）。
 PetSprite.prototype.showBalanceBubble = function showBalanceBubble(state) {
   if (!state || !state.ok) return;
   this.bubbleOn = true;
@@ -207,14 +211,14 @@ PetSprite.prototype.showBalanceBubble = function showBalanceBubble(state) {
   this.balanceState = state; // 展开态按页现算窗口明细与用量行（balanceView 只是收起态那两行）
   this.balanceViewIndex = 0; // 新一轮展示一律从第一页开始（与浏览器一致）
   this.renderBubble();
-  // 气泡 10s 定时消失（与动画解耦：即使动画被点击/拖拽打断，气泡也按时收起；重复触发先清旧定时器）
+  // 气泡定时消失（与动画解耦：即使动画被点击/拖拽打断，气泡也按时收起；重复触发先清旧定时器）
   if (this.bubbleTimer !== null) window.clearTimeout(this.bubbleTimer);
   this.bubbleTimer = window.setTimeout(() => {
     this.bubbleOn = false;
     // 收起即恢复原优先级：被顶掉的说话 / 任务气泡在自己还亮着的时候重新上来。
     this.balanceForced = false;
     this.renderBubble();
-  }, BUBBLE_DURATION_MS);
+  }, bubbleMsOf(this.pet));
 };
 
 // 余额展示（气泡 + 档位动画）：周期轮询与菜单点播共用同一展示路径，视觉与行为严格一致。
@@ -247,8 +251,8 @@ PetSprite.prototype.showBalanceNow = function showBalanceNow(state, manual) {
 };
 
 // 点余额气泡：切到下一页（末页回第一页），页数由 balancePageCount 决定。
-// 淡出 → 换内容 → 淡入（250ms 后才重绘，否则内容会在半透明时被替换 = 硬切）；同时重置 10s 定时器，
-// 否则第 8 秒才点开就只剩 2 秒。命中区由 renderBubble 末尾的 syncInputBusy() 重报。
+// 淡出 → 换内容 → 淡入（250ms 后才重绘，否则内容会在半透明时被替换 = 硬切）；同时重置停留计时，
+// 否则在时长尾巴上才点开就只剩一两秒。命中区由 renderBubble 末尾的 syncInputBusy() 重报。
 PetSprite.prototype.toggleBalanceDetail = function toggleBalanceDetail() {
   if (!this.balanceClickable()) return;
   this.balanceViewIndex = (this.balanceViewIndex + 1) % this.balancePageCount();
@@ -264,7 +268,7 @@ PetSprite.prototype.toggleBalanceDetail = function toggleBalanceDetail() {
     this.bubbleOn = false;
     this.balanceForced = false; // 收起即恢复原优先级（与 showBalanceBubble 同口径）
     this.renderBubble();
-  }, BUBBLE_DURATION_MS);
+  }, bubbleMsOf(this.pet));
 };
 
 // 轮询组装：容器统一拉取与触发，与浏览器端同一套路径。

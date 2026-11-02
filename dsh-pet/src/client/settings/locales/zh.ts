@@ -115,6 +115,9 @@ export const zh = {
   savePartial: '主宠物已保存，但 {names} 没能写回：检查该角色包配置是否合法、目录是否可写。',
   notifyToggle: '系统通知',
   notifyToggleHint: '对话完成 / 生成失败 / 权限申请 / 用户选择，在窗口失焦时弹出系统级通知（桌面右下角）。',
+  bubbleDuration: '气泡停留（秒）',
+  bubbleDurationHint:
+    '气泡弹出后停留多久自动收起（整秒 1~3600，默认 5）。碎碎念、对话、余额、完成/出错提示共用这个时长；接口显式给了时长的以接口为准。',
   clickSoundToggle: '点击音效',
   clickSoundToggleHint:
     '点一下宠物播一声内置音效（assets/sound/click-duck.wav，音量 0.5；100ms 内的连续点击只响一次，多开也不会叠音）。关掉即完全静音。随「保存」写入用户配置。',

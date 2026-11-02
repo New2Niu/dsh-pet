@@ -122,6 +122,9 @@ export const ja: Record<Key, string> = {
   notifyToggle: 'システム通知',
   notifyToggleHint:
     '会話の完了 / 生成失敗 / 権限リクエスト / ユーザーへの確認を、ウィンドウが非アクティブのときに OS レベルの通知（デスクトップ右下）で表示します。',
+  bubbleDuration: 'ふきだし表示時間（秒）',
+  bubbleDurationHint:
+    'ふきだしが出てから自動で消えるまでの秒数（整数 1-3600、既定 5）。つぶやき・会話・残高・タスク通知で共通です。API が明示した時間が優先されます。',
   clickSoundToggle: 'クリック音',
   clickSoundToggleHint:
     'ペットをクリックすると内蔵の効果音（assets/sound/click-duck.wav、音量 0.5）が一度鳴ります。100ms 以内の連続クリックは1回だけ鳴り、複数起動しても重なりません。オフにすると完全に無音になります。「保存」と一緒にユーザー設定へ書き込まれます。',

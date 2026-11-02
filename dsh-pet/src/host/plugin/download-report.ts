@@ -21,7 +21,7 @@ export type DownloadReportInput = {} & Pick<HostSetup, 'EXTERNAL_WORK_SESSION'> 
 export function createDownloadReport(deps: DownloadReportInput) {
   const { EXTERNAL_WORK_SESSION, nextExternalWorkSeq, publishWorkStatus, workStatus } = deps;
   /** Electron 下载日志的收尾槽位保留时长（ms）：够看清「就绪 / 失败」，又不让这条日志一直盖住
-   *  随后真实的工作状态（终态档在渲染端本来也会 10s 自动收起气泡）。 */
+   *  随后真实的工作状态（终态档在渲染端本来也会按停留时长自动收起气泡）。 */
   const DOWNLOAD_SLOT_CLEAR_MS = 12 * 1000;
 
   let downloadSlotTimer: ReturnType<typeof setTimeout> | null = null;
