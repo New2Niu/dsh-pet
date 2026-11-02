@@ -8,6 +8,9 @@
 import type { ContextMenuMount, MenuBranch, MenuLeaf, MenuNode } from './types.ts';
 import { pickPanelPosition } from './position.ts';
 
+/** 子面板展开期间挂在分支行上的类名：保持与 :hover 同款底色，指示「子菜单是从这一行出来的」。 */
+const BRANCH_OPEN_CLASS = 'dsh-pet-menu-branch-open';
+
 function isBranchNode(n: MenuNode): n is MenuBranch {
   return 'children' in n && Array.isArray((n as MenuBranch).children);
 }
@@ -42,17 +45,60 @@ export function mountContextMenu(opts: {
 
   let closed = false;
 
-  /** 每个面板当前展开的子面板（无 = 未展开）；hideChain 会沿链清除 */
-  const openChild = new Map<HTMLElement, HTMLElement>();
+  /** 每个面板当前展开的子面板（无 = 未展开）；hideChain 会沿链清除。
+   *  连触发项一起存：子面板开着时那行分支要保持高亮，指针走过内边距/缝隙时不至于「没有落点」。 */
+  const openChild = new Map<HTMLElement, { panel: HTMLElement; item: HTMLElement }>();
+  /** 每个「父面板 ↔ 已展开子面板」之间那条缝隙上的透明热区（键 = 父面板）。 */
+  const gapBridge = new Map<HTMLElement, HTMLElement>();
   /** 指针整体离开菜单树的兜底关闭定时器（root mouseover 重新进入即取消） */
   let leaveTimer: number | null = null;
 
-  /** 关闭某面板及其后代面板整条链（display:none + 清 openChild 链） */
-  const hideChain = (panel: HTMLElement): void => {
-    panel.style.display = 'none';
-    const child = openChild.get(panel);
+  /** 撤掉某父面板的缝隙桥（没有就什么都不做）。 */
+  const dropBridge = (parentPanel: HTMLElement): void => {
+    const bridge = gapBridge.get(parentPanel);
+    if (!bridge) return;
+    bridge.remove();
+    gapBridge.delete(parentPanel);
+  };
+
+  /** 在父面板与子面板之间铺一块透明热区：两层面板之间有 4px 空隙，指针穿过（或在那里犹豫一下）
+   *  就会离开全部面板、触发 root mouseleave 的兜底关闭——手一慢整棵菜单就没了。桥是 root 的后代，
+   *  指针停在桥上仍算在菜单内；它只盖住缝隙本身，不遮任何菜单项。 */
+  const placeBridge = (parentPanel: HTMLElement, childPanel: HTMLElement): void => {
+    const pr = parentPanel.getBoundingClientRect();
+    const cr = childPanel.getBoundingClientRect();
+    // 只在「分居左右」时才有缝可补：相接或重叠（clamp 兜底把面板压到一起）就撤掉旧桥
+    const toRight = cr.left >= pr.right;
+    const toLeft = cr.right <= pr.left;
+    const width = toRight ? cr.left - pr.right : pr.left - cr.right;
+    if ((!toRight && !toLeft) || width <= 0 || width > 24) {
+      dropBridge(parentPanel);
+      return;
+    }
+    let bridge = gapBridge.get(parentPanel);
+    if (!bridge) {
+      bridge = document.createElement('div');
+      bridge.className = 'dsh-pet-menu-bridge';
+      root.appendChild(bridge);
+      gapBridge.set(parentPanel, bridge);
+    }
+    // 纵向取两个面板的并集：斜穿缝隙时不会从上下两端漏出去
+    const top = Math.min(pr.top, cr.top);
+    bridge.style.left = (toRight ? pr.right : cr.right) + 'px';
+    bridge.style.top = top + 'px';
+    bridge.style.width = width + 'px';
+    bridge.style.height = Math.max(pr.bottom, cr.bottom) - top + 'px';
+  };
+
+  /** 关闭某面板及其后代面板整条链（撤分支高亮 + 撤缝隙桥 + display:none + 清 openChild 链） */
+  const hideChain = (entry: { panel: HTMLElement; item: HTMLElement }): void => {
+    entry.item.classList.remove(BRANCH_OPEN_CLASS);
+    entry.panel.style.display = 'none';
+    const parentPanel = entry.item.parentElement;
+    if (parentPanel) dropBridge(parentPanel);
+    const child = openChild.get(entry.panel);
     if (child) {
-      openChild.delete(panel);
+      openChild.delete(entry.panel);
       hideChain(child);
     }
   };
@@ -80,6 +126,16 @@ export function mountContextMenu(opts: {
     });
     panel.style.left = pick.left + 'px';
     panel.style.top = pick.top + 'px';
+    // 摆好才知道缝隙在哪：只有贴好之后才能量出父/子面板之间那 4px
+    if (parentEl) placeBridge(parentEl, panel);
+  };
+
+  /** 收起本面板当前展开的子面板链（叶子项被悬停时用：指针已离开分支，子菜单不该还挂着）。 */
+  const collapseChildren = (panel: HTMLElement): void => {
+    const child = openChild.get(panel);
+    if (!child) return;
+    openChild.delete(panel);
+    hideChain(child);
   };
 
   /** 构建一层面板；分支项的子面板平级挂到 root 下、不嵌套。
@@ -109,8 +165,12 @@ export function mountContextMenu(opts: {
         // 指针在本菜单树内移动绝不自动收起——跨 4px 缝隙或面板间隙都不会触发关闭。
         item.addEventListener('mouseenter', () => {
           const prev = openChild.get(panel);
-          if (prev && prev !== childPanel) hideChain(prev);
-          openChild.set(panel, childPanel);
+          if (prev && prev.panel !== childPanel) {
+            openChild.delete(panel);
+            hideChain(prev);
+          }
+          openChild.set(panel, { panel: childPanel, item });
+          item.classList.add(BRANCH_OPEN_CLASS);
           showPanel(childPanel, item);
         });
       } else {
@@ -149,6 +209,17 @@ export function mountContextMenu(opts: {
       }
       panel.appendChild(item);
     }
+    // 指针落到本面板的「叶子行」上时收起本面板已展开的子菜单：否则从「配图」划到「睡觉」这种
+    // 没有子菜单的项，上一级的子菜单会一直挂在屏幕上。
+    // 只认叶子行，两种落点必须放过：分支行（由它自己的 mouseenter 先收别人再展开自己）、
+    // 以及面板内边距/滚动留白——从分支行向右划向子面板要先经过这 4px 的 padding，
+    // 在那里收起等于子面板永远够不着（子菜单一离开菜单项就消失）。
+    panel.addEventListener('mouseover', (e) => {
+      const target = e.target as HTMLElement | null;
+      const item = target && typeof target.closest === 'function' ? target.closest('.dsh-pet-menu-item') : null;
+      if (!item || item.classList.contains('dsh-pet-menu-branch')) return;
+      collapseChildren(panel);
+    });
     return panel;
   };
 

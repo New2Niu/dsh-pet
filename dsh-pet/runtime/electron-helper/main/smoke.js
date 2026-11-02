@@ -156,6 +156,11 @@ function runSmokeCheck({ app, windows, windowIgnore, setPointerFallbackPaused })
                 };
                 out.panelCount = panels.length;
                 out.lvl2AfterHoverRoot = visible().length;
+                out.bridgesAfterHoverRoot = menu.querySelectorAll('.dsh-pet-menu-bridge').length;
+                // 回归：指针停在父面板的内边距上（从分支行往右划向子面板必经的 4px）不许收子面板，
+                // 否则子菜单一离开菜单项就消失、用户永远够不到它
+                panels[0].dispatchEvent(new MouseEvent('mouseover', { bubbles: true, relatedTarget: panels[1] }));
+                out.lvl2AfterPaddingHover = visible().length;
                 // 二级：悬停「动作」下的第一个分类 → 打开三级面板（具体动画）
                 var panel1 = visible().filter(function (p) {
                   return p !== panels[0];
@@ -193,6 +198,21 @@ function runSmokeCheck({ app, windows, windowIgnore, setPointerFallbackPaused })
                     });
                     out.lvl3AfterGapHover = visible().length;
                   }
+                }
+                // 回归：从分支项划到同一层没有子菜单的叶子项（如「配图」→「睡觉」）时，
+                // 上一级子面板必须收起（旧实现只在分支项 hover 时管子面板，叶子项无人收）
+                var leaf = null;
+                var rootItems = panels[0].querySelectorAll('.dsh-pet-menu-item');
+                for (var i = 0; i < rootItems.length; i++) {
+                  if (!rootItems[i].classList.contains('dsh-pet-menu-branch')) {
+                    leaf = rootItems[i];
+                    break;
+                  }
+                }
+                if (leaf) {
+                  leaf.dispatchEvent(new MouseEvent('mouseover', { bubbles: true, relatedTarget: panels[0] }));
+                  out.visibleAfterLeafHover = visible().length;
+                  out.bridgesAfterLeafHover = menu.querySelectorAll('.dsh-pet-menu-bridge').length;
                 }
               }
             }

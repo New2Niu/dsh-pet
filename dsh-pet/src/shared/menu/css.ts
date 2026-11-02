@@ -27,9 +27,15 @@ export const MENU_CSS = [
   '.dsh-pet-menu-column::-webkit-scrollbar-thumb:hover{background:rgba(43,99,255,.4);',
   'border:2px solid transparent;background-clip:content-box}',
   '.dsh-pet-menu-column::-webkit-scrollbar-corner{background:transparent}',
+  // 缝隙桥：父面板与子面板之间那条 4px 空隙上的透明热区，位置由 JS 写入。
+  // 它只为了让指针穿过缝隙时仍算「在菜单内」（否则停手超过 200ms 会触发整棵菜单的兜底关闭）。
+  '.dsh-pet-menu-bridge{position:absolute;background:transparent}',
   '.dsh-pet-menu-item{position:relative;display:flex;align-items:center;justify-content:space-between;',
   'gap:14px;padding:5px 12px;border-radius:6px;white-space:nowrap;cursor:default}',
   '.dsh-pet-menu-item:hover{background:rgba(43,99,255,.14)}',
+  // 子菜单开着的分支行：与 :hover 同款底色常驻。指针走到内边距或两层面板之间的 4px 缝隙时，
+  // 光标下方没有任何项可高亮，这条底色是「子菜单是从这行出来的、往那边走」的唯一提示。
+  '.dsh-pet-menu-branch-open{background:rgba(43,99,255,.14)}',
   // 文字占满剩余宽度：菜单项是 space-between 的 flex 行，label 吃掉弹性空间后，箭头与 hint 才会贴右。
   // 按类名选而不是 `>span:first-child`——带缩略图的项里第一个子节点是 img。
   '.dsh-pet-menu-label{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}',
