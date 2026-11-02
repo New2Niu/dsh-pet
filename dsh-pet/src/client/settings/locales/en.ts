@@ -27,15 +27,24 @@ export const en: Record<Key, string> = {
   'shortcut.open': 'Open pet chat',
   'shortcut.chat': 'Open chat bubble',
   'shortcut.hear': 'Voice input',
+  'shortcut.capture': 'Screenshot to chat',
   shortcutCardTitle: 'Shortcuts',
-  shortcutCardHint: 'The first key needs the pointer over the pet; keys with Ctrl are global.',
+  shortcutCardHint: 'Two groups once expanded: pet shortcuts and global shortcuts.',
   shortcutRowChat: 'Open chat',
+  shortcutRowHold: 'Hold to talk',
   shortcutRowHear: 'Voice input',
+  shortcutRowCapture: 'Screenshot',
+  shortcutRowPaste: 'Paste image',
   shortcutRowTodo: 'Todo list',
   shortcutRowSleep: 'Sleep / wake',
+  shortcutRowDisplay: 'Display position',
   shortcutRowSidebar: 'Open sidebar chat',
-  shortcutNoteDesktop:
-    'Global shortcuts do not apply to the desktop pet window; rebind them in Settings → General → Shortcuts.',
+  shortcutGroupPet: 'Pet shortcuts',
+  shortcutGroupPetHint:
+    'On the web, hovering the pet is enough. In the desktop pet window, click the pet first so it takes keyboard focus.',
+  shortcutGroupGlobal: 'Global shortcuts',
+  shortcutGroupGlobalHint:
+    'Dispatched by DSH in the web app and the desktop window; rebind them in Settings → General → Shortcuts.',
   petsLabel: 'Pets',
   add: 'Add pet',
   remove: 'Remove',
@@ -158,6 +167,9 @@ export const en: Record<Key, string> = {
   voiceTodoEnabledHint:
     'Speaks a todo reminder when it comes due (the bubble still appears; this only decides whether it is spoken). Gated by the master switch above. Off by default.',
   voiceNameLabel: 'Voice',
+  voiceVolumeLabel: 'Volume',
+  voiceVolumeHint:
+    'Playback volume as a 0–1 decimal: 1 is full volume (100%), 0 is muted. Changes loudness only and never re-synthesizes audio, so adjusting it costs nothing extra. Independent of the master switch above — it has no effect while that switch is off.',
   physicsTitle: 'Physics (drag & throw feel)',
   physicsHint:
     'Global default, shared by every pet (a pet pack may override it in its own kind file); written to the user config on "Save" (never written immediately). Applies instantly in the browser; on the desktop it applies once Save reloads the pet windows.',

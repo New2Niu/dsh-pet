@@ -257,6 +257,7 @@ describe('buildSaveBody —— 请求体字段', () => {
       'voiceEnabled',
       'voiceName',
       'voiceTodoEnabled',
+      'voiceVolume',
       'voiceWhisperEnabled',
       'whisperImageEnabled',
       'whisperModel',

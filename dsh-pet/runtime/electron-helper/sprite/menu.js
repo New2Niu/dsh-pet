@@ -22,45 +22,47 @@ Object.assign(PetSprite.prototype, {
     this.stopMove(); // 菜单悬停期间宠物不漫游
     // 桌面专属工具根项 + 共享菜单树（动作 → 分类 → 具体动画）。碎碎念/对话无条件显示：手动触发
     // 不受 whisperEnabled 限制（该字段只影响自动轮询）。首项文案与去向随宿主形态变，见 OPEN_LABEL。
+    // 顺序：打开软件 / 余额 / 待办 / 碎碎念 / 对话 / 配图 / 睡觉 → 动作树 → 显示位置 / 重载配置 / 回到初始位置。
     const tools = [
       {
         label: OPEN_LABEL[OPEN_TARGET],
         action: 'open-site',
         hint: OPEN_SHORTCUT_HINT,
       },
+      // 「查看余额」无条件显示：关了 balanceEnabled 的宠物也能点，手动请求不受开关限制，点了一定给答复。
+      { label: '查看余额', action: 'show-balance' },
+      // 「待办事项」是待办面板的唯一入口（单击宠物不再弹面板），排在余额之后。
+      { label: '待办事项', action: 'todo', hint: S.TODO_HOTKEY_HINT },
+      { label: '碎碎念', action: 'whisper' },
+      { label: '对话', action: 'chat', hint: S.CHAT_HOTKEY_HINT },
     ];
-    // 「查看余额」无条件显示：关了 balanceEnabled 的宠物也能点，手动请求不受开关限制，点了一定给答复。
-    tools.push({ label: '查看余额', action: 'show-balance' });
-    // 「待办事项」是待办面板的唯一入口（单击宠物不再弹面板），排在余额之后。
-    tools.push({ label: '待办事项', action: 'todo', hint: S.TODO_HOTKEY_HINT });
-    // 睡觉/起来：睡着时这一项是「起来」（点它等于叫醒），醒着时是「睡觉」。两种文案共用一个位置，
-    // 都在「待办事项」之后、「碎碎念」之前（与浏览器端的菜单同一排法）。
-    // 该条目没配 animations.sleep 就整项不出现——与配置注释「不写 = 没有睡觉功能」一致。
-    if (Array.isArray(this.animations.sleep) && this.animations.sleep.length > 0) {
-      if (this.sleeping) tools.push({ label: '起来', action: 'wake', hint: S.SLEEP_HOTKEY_HINT });
-      else tools.push({ label: '睡觉', action: 'sleep', hint: S.SLEEP_HOTKEY_HINT });
-    }
-    tools.push({ label: '碎碎念', action: 'whisper' });
     // 「配图」：与浏览器端同一份分支（纳入对话的配图 / 其他），点一张就用它说一句；没有可用图时
     // 返回 null，整项不出现。数据来自拍平层吹入的条目级字段（this.pet.memes / chatImageEnabled /
     // chatImageLimit），与网页端同一个 flattenConfigPets；缩略图走 BASE 的 /pic/memes 绝对地址
     // （桌面窗口是 file://，相对路径取不到图）。
     const memeBranch = S.buildMemeBranch(this.pet, (name) => S.memeThumbUrl(BASE, this.pet.assetRoot, name));
     if (memeBranch) tools.push(memeBranch);
-    tools.push(
-      { label: '对话', action: 'chat', hint: S.CHAT_HOTKEY_HINT },
-      { label: '回到初始位置', action: 'home' },
+    // 睡觉/起来：睡着时这一项是「起来」（点它等于叫醒），醒着时是「睡觉」。两种文案共用一个位置，
+    // 排在「配图」之后、动作树之前（与浏览器端的菜单同一排法）。
+    // 该条目没配 animations.sleep 就整项不出现——与配置注释「不写 = 没有睡觉功能」一致。
+    if (Array.isArray(this.animations.sleep) && this.animations.sleep.length > 0) {
+      if (this.sleeping) tools.push({ label: '起来', action: 'wake', hint: S.SLEEP_HOTKEY_HINT });
+      else tools.push({ label: '睡觉', action: 'sleep', hint: S.SLEEP_HOTKEY_HINT });
+    }
+    // 动作树之后是维护类：显示位置 → 重载配置 → 回到初始位置。
+    const tail = [
       // 显示位置（仅网页/仅桌面/两者/都不）：改这只宠物的 display 配置，由宿主重载生效。
       // 与浏览器端注入同一份子菜单，两端文案与取值不会漂移。不就地开关窗：窗口是进程启动时按
       // DSH_PET_PETS 一次性建的，就地增删既改不了磁盘配置也改不了窗口数量。
       S.displayMenuBranch(),
-      // 重载配置：请宿主重启桌面 Helper，全部窗口按最新配置重建。放在最后——它是维护动作。
+      // 重载配置：请宿主重启桌面 Helper，全部窗口按最新配置重建。维护动作，排在回到初始位置之前。
       { label: '重载配置', action: 'reload' },
-    );
+      { label: '回到初始位置', action: 'home' },
+    ];
     // 第三方菜单项统一收在「更多」下：0 项不出现；某个 owner 只有 1 项时跳过 owner 那层直接平铺。
-    // 放在整棵动作树之后——「更多」不插在工具项与动作之间。
+    // 放在最后——「更多」不插在工具项与动作之间。
     const more = S.buildMoreBranch(this.menuItems);
-    const tree = tools.concat(S.buildMenuTree(this.animations), more ? [more] : []);
+    const tree = tools.concat(S.buildMenuTree(this.animations), tail, more ? [more] : []);
     if (!tree.length) return;
     this.menuOpen = true;
     this.setInteractive(true); // 菜单是窗口内 DOM：悬停期间整窗保持可交互，关闭后恢复命中区穿透
@@ -211,7 +213,63 @@ Object.assign(PetSprite.prototype, {
   // 气泡按配置的停留时长），只多一步用户输入。记忆经宿主 /chat 读写，同一实例的浏览器与桌面共享。
   // 弹窗跟随身体命中区 this.hit（桌宠在视频中间，视频框右上角 ≠ 宠物右上角），超出视口自动夹回；
   // 弹窗是窗口内 DOM，期间整窗保持可交互，关闭后恢复命中区穿透。
-  showChatFromMenu(image) {
+  /** 悬停时粘贴一张图：弹窗没开就带着图打开，开着就塞进去；纯文字交给系统自己处理。 */
+  onPasteImage(e) {
+    if (!this.hoverBody) return;
+    // 焦点在输入框里是正常粘贴，抢了会把文字粘丢——那种情况弹窗自己会接
+    const active = document.activeElement;
+    if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.isContentEditable)) return;
+    const file = S.firstImageFromClipboard(e.clipboardData);
+    if (!file) return;
+    e.preventDefault();
+    if (this.chatMount) {
+      void this.chatMount.setImageFile(file);
+      return;
+    }
+    this.showChatFromMenu(file);
+  },
+
+  /** 截一帧（主进程取宠物所在屏）；形状与浏览器侧 EncodedImage 一致，拿不到就抛给调用方决定。 */
+  async captureEncoded() {
+    if (!window.petBridge || typeof window.petBridge.captureScreen !== 'function') {
+      throw new Error('当前环境不支持截屏');
+    }
+    const shot = await window.petBridge.captureScreen();
+    if (!shot) throw new Error('没有取到屏幕画面');
+    return {
+      base64: shot.data,
+      mediaType: shot.mediaType,
+      bytes: shot.bytes,
+      width: shot.width,
+      height: shot.height,
+      resized: true,
+      previewUrl: 'data:' + shot.mediaType + ';base64,' + shot.data,
+    };
+  },
+
+  /** 截图快捷键：弹窗开着就把图塞进当前弹窗，没开就带着图打开；截不到也开弹窗把原因写出来。 */
+  async screenshotFromShortcut() {
+    let encoded;
+    try {
+      encoded = await this.captureEncoded();
+    } catch (error) {
+      const reason = '截屏失败：' + (error && error.message ? error.message : error);
+      if (this.chatMount) {
+        this.chatMount.flash(reason);
+        return;
+      }
+      this.showChatFromMenu();
+      if (this.chatMount) this.chatMount.flash(reason);
+      return;
+    }
+    if (this.chatMount) {
+      this.chatMount.setEncoded(encoded);
+      return;
+    }
+    this.showChatFromMenu(undefined, encoded);
+  },
+
+  showChatFromMenu(image, encoded) {
     if (this.chatMount) {
       this.chatMount.close();
       this.chatMount = null;
@@ -227,23 +285,10 @@ Object.assign(PetSprite.prototype, {
       y: Math.max(4, this.hit.getBoundingClientRect().top + 6),
       // 拖拽落到宠物身上时直接带着图开弹窗
       ...(image ? { initialImage: image } : {}),
+      // 截图快捷键：截到的帧是 base64，没有 File
+      ...(encoded ? { initialEncoded: encoded } : {}),
       // 截屏：主进程取宠物所在屏的一帧（JPEG base64），形状与浏览器侧一致
-      capture: async () => {
-        if (!window.petBridge || typeof window.petBridge.captureScreen !== 'function') {
-          throw new Error('当前环境不支持截屏');
-        }
-        const shot = await window.petBridge.captureScreen();
-        if (!shot) throw new Error('没有取到屏幕画面');
-        return {
-          base64: shot.data,
-          mediaType: shot.mediaType,
-          bytes: shot.bytes,
-          width: shot.width,
-          height: shot.height,
-          resized: true,
-          previewUrl: 'data:' + shot.mediaType + ';base64,' + shot.data,
-        };
-      },
+      capture: () => this.captureEncoded(),
       // 弹窗同菜单：只允许在「窗口 ∩ 工作区」内显示，贴边时不被屏幕裁掉
       clamp: this.visibleClampRect(),
       onSent: () => {

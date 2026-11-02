@@ -28,15 +28,24 @@ export const es: Record<Key, string> = {
   'shortcut.open': 'Abrir el chat de la mascota',
   'shortcut.chat': 'Abrir la ventana de chat',
   'shortcut.hear': 'Entrada de voz',
+  'shortcut.capture': 'Captura de pantalla al chat',
   shortcutCardTitle: 'Atajos',
-  shortcutCardHint: 'La primera tecla solo actúa con el puntero sobre la mascota; las de Ctrl son globales.',
+  shortcutCardHint: 'Al expandir hay dos grupos: atajos de la mascota y atajos globales.',
   shortcutRowChat: 'Abrir chat',
+  shortcutRowHold: 'Mantener para hablar',
   shortcutRowHear: 'Entrada de voz',
+  shortcutRowCapture: 'Captura de pantalla',
+  shortcutRowPaste: 'Pegar imagen',
   shortcutRowTodo: 'Tareas',
   shortcutRowSleep: 'Dormir / despertar',
+  shortcutRowDisplay: 'Posición de visualización',
   shortcutRowSidebar: 'Abrir el chat lateral',
-  shortcutNoteDesktop:
-    'Los atajos globales no se aplican a la ventana del escritorio; se cambian en Ajustes → General → Atajos.',
+  shortcutGroupPet: 'Atajos de la mascota',
+  shortcutGroupPetHint:
+    'En la web basta con pasar el puntero sobre la mascota. En la ventana del escritorio hay que hacer clic en la mascota para que reciba el foco del teclado.',
+  shortcutGroupGlobal: 'Atajos globales',
+  shortcutGroupGlobalHint:
+    'Los distribuye DSH en la web y en la ventana del escritorio; se cambian en Ajustes → General → Atajos.',
   petsLabel: 'Mascotas',
   add: 'Agregar mascota',
   remove: 'Eliminar',
@@ -161,6 +170,9 @@ export const es: Record<Key, string> = {
   voiceTodoEnabledHint:
     'Locuta el recordatorio de una tarea cuando vence (el globo sigue apareciendo; esto solo decide si se locuta). Depende del interruptor maestro de arriba. Desactivado por defecto.',
   voiceNameLabel: 'Voz',
+  voiceVolumeLabel: 'Volumen',
+  voiceVolumeHint:
+    'Volumen de reproducción como decimal 0–1: 1 es el volumen máximo (100 %) y 0 silencia. Solo cambia la intensidad y no vuelve a sintetizar el audio, así que ajustarlo no tiene coste extra. Es independiente del interruptor general de arriba: con ese interruptor apagado no surte efecto.',
   physicsTitle: 'Física (sensación al arrastrar y lanzar)',
   physicsHint:
     'Valor predeterminado global, compartido por todas las mascotas (un pet pack puede sobrescribirlo en el archivo de su propio tipo); se escribe en la configuración del usuario al "Guardar" (nunca al instante). En el navegador se aplica al instante; en el escritorio se aplica cuando Guardar recarga las ventanas de mascotas.',

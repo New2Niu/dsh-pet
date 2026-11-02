@@ -27,15 +27,24 @@ export const fr: Record<Key, string> = {
   'shortcut.open': 'Ouvrir le chat du compagnon',
   'shortcut.chat': 'Ouvrir la fenêtre de chat',
   'shortcut.hear': 'Saisie vocale',
+  'shortcut.capture': 'Capture d’écran vers le chat',
   shortcutCardTitle: 'Raccourcis',
-  shortcutCardHint: 'La première touche ne vaut que pointeur sur le compagnon ; celles avec Ctrl sont globales.',
+  shortcutCardHint: 'Deux groupes une fois déployé : raccourcis du compagnon et raccourcis globaux.',
   shortcutRowChat: 'Ouvrir le chat',
+  shortcutRowHold: 'Maintenir pour parler',
   shortcutRowHear: 'Saisie vocale',
+  shortcutRowCapture: 'Capture d’écran',
+  shortcutRowPaste: 'Coller une image',
   shortcutRowTodo: 'Tâches',
   shortcutRowSleep: 'Dormir / réveiller',
+  shortcutRowDisplay: 'Position d’affichage',
   shortcutRowSidebar: 'Ouvrir le chat latéral',
-  shortcutNoteDesktop:
-    'Les raccourcis globaux ne s’appliquent pas à la fenêtre du bureau ; modifiables dans Réglages → Général → Raccourcis.',
+  shortcutGroupPet: 'Raccourcis du compagnon',
+  shortcutGroupPetHint:
+    'Sur le web, il suffit de survoler le compagnon. Dans la fenêtre du bureau, cliquez d’abord sur le compagnon pour qu’il prenne le focus clavier.',
+  shortcutGroupGlobal: 'Raccourcis globaux',
+  shortcutGroupGlobalHint:
+    'Distribués par DSH dans le web et la fenêtre du bureau ; modifiables dans Réglages → Général → Raccourcis.',
   petsLabel: 'Compagnons',
   add: 'Ajouter un compagnon',
   remove: 'Supprimer',
@@ -159,6 +168,9 @@ export const fr: Record<Key, string> = {
   voiceTodoEnabledHint:
     "Lit un rappel de tâche à son échéance (la bulle s'affiche toujours ; cet interrupteur décide seulement s'il est lu). Soumis à l'interrupteur principal ci-dessus. Désactivé par défaut.",
   voiceNameLabel: 'Voix',
+  voiceVolumeLabel: 'Volume',
+  voiceVolumeHint:
+    'Volume de lecture en décimal 0–1 : 1 correspond au volume maximal (100 %), 0 coupe le son. Seule l’intensité change et l’audio n’est pas resynthétisé, donc le régler ne coûte rien de plus. Indépendant de l’interrupteur général ci-dessus : il est sans effet quand celui-ci est désactivé.',
   physicsTitle: 'Physique (ressenti du glisser-lancer)',
   physicsHint:
     "Valeurs par défaut globales, partagées par tous les compagnons (un pet pack peut les remplacer dans son propre fichier de type) ; écrites dans la configuration utilisateur lors de l'enregistrement (jamais immédiatement). Appliquées immédiatement dans le navigateur ; sur le bureau, après que l'enregistrement a rechargé les fenêtres des compagnons.",

@@ -449,7 +449,7 @@ Object.assign(PetSprite.prototype, {
     this.showChatFromMenu(file);
   },
 
-  /** 悬停快捷键：按住 M 说话、L 开对话、D 开关待办、S 切换睡/醒。 */
+  /** 悬停快捷键：按住 M 说话、L 开对话、S 截图、Z 切换睡/醒、D 开关待办、1-4 切显示位置。 */
   onHotkey(e) {
     // 按住说话先判：它要吃掉按住期间的自动重复，晚一步就会被输入框收走
     if (this.hearHold.onKeyDown(e)) {
@@ -457,9 +457,20 @@ Object.assign(PetSprite.prototype, {
       return;
     }
     if (!this.hoverBody) return;
+    const display = S.displayOfHotkey(e);
+    if (display) {
+      e.preventDefault();
+      this.setPetDisplay(display);
+      return;
+    }
     if (S.isChatHotkey(e)) {
       e.preventDefault();
       this.showChatFromMenu();
+      return;
+    }
+    if (S.isCaptureHotkey(e)) {
+      e.preventDefault();
+      this.screenshotFromShortcut();
       return;
     }
     if (S.isTodoHotkey(e)) {

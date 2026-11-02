@@ -4,10 +4,19 @@
  * 浮层句柄只在本模块持有，卸载时统一关闭；提示位置直接写 style，不走 React 状态。
  * @module dsh-pet/src/client/pet/card/entry
  */
-import { CHAT_HOTKEY_HINT, createHearHold, mountChatDialog, type ChatDialogMount } from '../../../shared/chat/index.ts';
+import {
+  CHAT_HOTKEY_HINT,
+  createHearHold,
+  isCaptureHotkey,
+  mountChatDialog,
+  type ChatDialogMount,
+  type EncodedImage,
+} from '../../../shared/chat/index.ts';
 import { captureDisplayFrame } from '../../../shared/chat/capture.ts';
+import { displayOfHotkey } from '../../../shared/display-hotkey.ts';
 import { SLEEP_HOTKEY_HINT, isSleepHotkey } from '../../../shared/sleep-hotkey.ts';
 import { TODO_HOTKEY_HINT, isTodoHotkey } from '../../../shared/todo/hotkey.ts';
+import type { PetDisplay } from '../../../shared/types.ts';
 import { bindOpenChat } from './open-chat.ts';
 import { registerPetChatHandle } from './registry.ts';
 import {
@@ -128,8 +137,8 @@ export function createCardEntry(rt: CardEntryRuntime) {
       [],
     );
 
-    /** 打开对话弹窗：弹窗贴在身体命中区右上角，视频框右上角不等于宠物右上角；超出视口夹回。 */
-    const openChat = (image?: File): void => {
+    /** 挂载对话弹窗：弹窗贴在身体命中区右上角，视频框右上角不等于宠物右上角；超出视口夹回。 */
+    const mountChat = (seed: { image?: File; encoded?: EncodedImage }): void => {
       if (chatRef.current) chatRef.current.close();
       const hitRect = stage()?.querySelector('.dsh-pet-hit')?.getBoundingClientRect();
       chatRef.current = mountChatDialog({
@@ -138,7 +147,8 @@ export function createCardEntry(rt: CardEntryRuntime) {
         surface: 'web',
         x: hitRect ? hitRect.right + 6 : window.innerWidth - 256,
         y: hitRect ? hitRect.top + 6 : 8,
-        ...(image ? { initialImage: image } : {}),
+        ...(seed.image ? { initialImage: seed.image } : {}),
+        ...(seed.encoded ? { initialEncoded: seed.encoded } : {}),
         // 浏览器侧截屏：getDisplayMedia 抓一帧，系统选择器由用户确认
         capture: captureDisplayFrame,
         onSent: () => {
@@ -149,6 +159,19 @@ export function createCardEntry(rt: CardEntryRuntime) {
           chatRef.current = null;
         },
       });
+    };
+
+    /** 打开对话（菜单、悬停 L、拖拽都走这条）；带图时直接进入待发送状态。 */
+    const openChat = (image?: File): void => mountChat(image ? { image } : {});
+
+    /** 把一张图送进对话：已开着就塞进去（不丢写了一半的字），没开就带图打开。 */
+    const openChatWithImage = (file: File): void => {
+      const existing = chatRef.current;
+      if (existing !== null) {
+        void existing.setImageFile(file);
+        return;
+      }
+      openChat(file);
     };
 
     /** 打开待办面板：面板占气泡槽，重复点击是幂等的。 */
@@ -173,6 +196,35 @@ export function createCardEntry(rt: CardEntryRuntime) {
       existing.el.querySelector<HTMLTextAreaElement>('.dsh-pet-chat-input')?.focus();
     };
 
+    /** 截一帧塞进对话；截不到时照样开弹窗，把原因写在弹窗里——静默失败会被当成快捷键坏了。 */
+    const captureInto = async (): Promise<void> => {
+      let encoded: EncodedImage;
+      try {
+        encoded = await captureDisplayFrame();
+      } catch (error) {
+        const reason = '截屏失败：' + (error instanceof Error ? error.message : String(error));
+        const opened = chatRef.current;
+        if (opened !== null) {
+          opened.flash(reason);
+          return;
+        }
+        mountChat({});
+        chatRef.current?.flash(reason);
+        return;
+      }
+      const existing = chatRef.current;
+      if (existing !== null) {
+        existing.setEncoded(encoded);
+        return;
+      }
+      mountChat({ encoded });
+    };
+
+    /** 截图动作的对外形状；异步收在里面，调用方不关心。 */
+    const screenshot = (): void => {
+      void captureInto();
+    };
+
     // 悬停标记：快捷键与拖拽都只在"鼠标停在这只宠物上"时生效，避免和页面其它交互抢事件。
     const hoverRef = useRef(false);
     // 挂载时注册一次监听，但始终调用最新的 openChat 闭包（它读 ref，不能捕获旧值）。
@@ -190,6 +242,11 @@ export function createCardEntry(rt: CardEntryRuntime) {
       const asleep = live.current.flow?.sleeping() ?? false;
       runMenuAction(asleep ? { label: '起来', action: 'wake' } : { label: '睡觉', action: 'sleep' });
     };
+    // 数字键切显示位置：与右键「显示位置」子菜单同一条动作派发（写 display 配置，宿主重启生效）。
+    const switchDisplayRef = useRef<(display: PetDisplay) => void>(() => {});
+    switchDisplayRef.current = (display) => {
+      runMenuAction({ label: '显示位置', action: 'set-display', display });
+    };
     // 按住说话的按下/松开同样每次渲染都新建闭包；状态机只建一次，只能经 ref 取最新的那两个。
     const startChatHearRef = useRef<() => void>(startChatHear);
     startChatHearRef.current = startChatHear;
@@ -197,26 +254,35 @@ export function createCardEntry(rt: CardEntryRuntime) {
     stopChatHearRef.current = stopChatHear;
     const openChatOrFocusRef = useRef<() => void>(openChatOrFocus);
     openChatOrFocusRef.current = openChatOrFocus;
-    // 全局快捷键要能遥控这一只：登记开窗与开关录音，卸载时摘掉。
+    const openChatWithImageRef = useRef<(file: File) => void>(openChatWithImage);
+    openChatWithImageRef.current = openChatWithImage;
+    const screenshotRef = useRef<() => void>(screenshot);
+    screenshotRef.current = screenshot;
+    // 全局快捷键要能遥控这一只：登记开关窗、开关录音，卸载时摘掉。
     // 句柄里全走 ref，卡片重渲染不会让登记表拿到过期闭包；cfgRef 本身也是稳定引用，列进依赖只为满足规则。
     useEffect(
       () =>
         registerPetChatHandle(cfgRef.current.id, {
           open: () => openChatOrFocusRef.current(),
+          // close 走弹窗自己的 onClose，句柄随之置空，isOpen 立刻转假。
+          close: () => chatRef.current?.close(),
+          isOpen: () => chatRef.current !== null,
           startHear: () => startChatHearRef.current(),
           stopHear: () => stopChatHearRef.current(),
           isHearing: () => chatRef.current?.isHearing() ?? false,
+          screenshot: () => screenshotRef.current(),
         }),
       [cfgRef],
     );
-    // 四个快捷键共用一次挂载：L 开对话、按住 M 说话、D 开关待办、S 切换睡/醒。
-    // 前三个都只在鼠标停在这只宠物上时生效；按住说话多一条——光标还在宠物自己的弹窗里也算，
+    // 悬停键共用一次挂载：L 开对话、按住 M 说话、S 截图、Z 切换睡/醒、D 开关待办、1-4 切显示位置。
+    // 除按住说话外都只在鼠标停在这只宠物上时生效；按住说话多一条——光标还在宠物自己的弹窗里也算，
     // 否则弹窗一开焦点被输入框拿走，最想说话的时机反而按不动。
     useEffect(() => {
+      // 挂载时注册一次监听，但始终调用最新的闭包（它们读 ref，不能捕获旧值）。
       const offChat = bindOpenChat({
         stage: stageGetterRef.current(),
         isHovered: () => hoverRef.current,
-        openChat: (image) => openChatRef.current(image),
+        openChat: (image) => (image === undefined ? openChatRef.current() : openChatWithImageRef.current(image)),
       });
       // 按住 M：按下开录、松手收尾。状态机自己管自动重复与松开，这里只管把事件送进去。
       const hearHold = createHearHold({
@@ -235,6 +301,17 @@ export function createCardEntry(rt: CardEntryRuntime) {
           return;
         }
         if (!hoverRef.current) return;
+        const display = displayOfHotkey(e);
+        if (display !== undefined) {
+          e.preventDefault();
+          switchDisplayRef.current(display);
+          return;
+        }
+        if (isCaptureHotkey(e)) {
+          e.preventDefault();
+          screenshotRef.current();
+          return;
+        }
         if (isSleepHotkey(e)) {
           e.preventDefault();
           toggleSleepRef.current();
@@ -274,18 +351,27 @@ export function createCardEntry(rt: CardEntryRuntime) {
       const sleepItem: MenuNode = asleep
         ? { label: '起来', action: 'wake', hint: SLEEP_HOTKEY_HINT }
         : { label: '睡觉', action: 'sleep', hint: SLEEP_HOTKEY_HINT };
+      // 顺序与桌面端同一排法：余额 / 待办 / 碎碎念 / 对话 / 配图 / 睡觉 → 动作树 → 显示位置 / 回到初始位置。
+      // 桌面专属的两项（打开软件、重载配置）在网页端没有对应动作，不出现。
       const tools: MenuNode[] = [
         { label: '查看余额', action: 'show-balance' },
         { label: '待办事项', action: 'todo', hint: TODO_HOTKEY_HINT },
-        ...(canSleep ? [sleepItem] : []),
         { label: '碎碎念', action: 'whisper' },
-        ...(memes ? [memes] : []),
         { label: '对话', action: 'chat', hint: CHAT_HOTKEY_HINT },
-        { label: '回到初始位置', action: 'home' },
+        ...(memes ? [memes] : []),
+        ...(canSleep ? [sleepItem] : []),
+      ];
+      const tail: MenuNode[] = [
         // 显示位置子菜单与桌面端同一份；改成不含 web 的值后本宠物会从页面消失。
         displayMenuBranch(),
+        { label: '回到初始位置', action: 'home' },
       ];
-      const tree: MenuNode[] = [...tools, ...buildMenuTree(cfgRef.current.animations), ...(more ? [more] : [])];
+      const tree: MenuNode[] = [
+        ...tools,
+        ...buildMenuTree(cfgRef.current.animations),
+        ...tail,
+        ...(more ? [more] : []),
+      ];
       if (!tree.length) return;
       e.preventDefault();
       e.stopPropagation(); // 不触碰 DSH 页面的菜单与右键处理。

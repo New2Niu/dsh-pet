@@ -33,6 +33,7 @@ import { createWriteFlow } from './settings/config/index.ts';
 import { makePhysicsCard } from './settings/physics-card.ts';
 import { makeShortcutsCard } from './settings/shortcuts-card.ts';
 import { attachTipLayer } from './settings/tip-layer.ts';
+import type { ShortcutHost } from './app-shortcut.ts';
 import type { SettingsRuntime } from './settings/runtime.ts';
 import { useConfigLoad } from './settings/config/index.ts';
 import { usePetList } from './settings/use-pet-list.ts';
@@ -50,9 +51,13 @@ export { petBridge };
  * 浏览器半侧是 `__ModuleLoader__` 单文件形态，react 能力只能由宿主在运行时注入，
  * 因此以工厂接收依赖，造出组件后再注册进设置页插槽。
  * @param rt - 运行时注入的依赖：`h`、hooks 与翻译函数 `t`。
+ * @param ctx - 客户端上下文：只用于读用户改绑后的快捷键键位。
  * @returns 设置页组件；`close` 由设置页外壳提供，本页未使用。
  */
-export function makePetConfigSection(rt: SettingsRuntime): FunctionComponent<{ close?: () => void }> {
+export function makePetConfigSection(
+  rt: SettingsRuntime,
+  ctx: ShortcutHost,
+): FunctionComponent<{ close?: () => void }> {
   const { h, useState, useEffect, useRef, useCallback, t } = rt;
 
   // 样式注入幂等，重复渲染不会重复插入。
@@ -72,7 +77,7 @@ export function makePetConfigSection(rt: SettingsRuntime): FunctionComponent<{ c
   const FontCard = makeFontCard(rt);
   const ModelCard = makeModelCard(rt, ModelPicker);
   const PhysicsCard = makePhysicsCard(rt);
-  const ShortcutsCard = makeShortcutsCard(rt);
+  const ShortcutsCard = makeShortcutsCard(rt, ctx);
   const MobileCard = makeMobileCard(rt);
   const Actions = makeActions(rt);
   const { ConfigMetaCard, StorageCard } = makePathsCards(rt);
@@ -144,6 +149,8 @@ export function makePetConfigSection(rt: SettingsRuntime): FunctionComponent<{ c
     // 语音播报开关与音色（全局默认）：随「保存」整包写入；初值即内置默认，加载后用成品值覆盖。
     const [voiceEnabled, setVoiceEnabled] = useState(false);
     const [voiceName, setVoiceName] = useState('zh-CN-XiaoyiNeural');
+    // 播放音量（全局系数 0–1）：初值 1 是内置默认（最大音量），加载后由成品值覆盖。
+    const [voiceVolume, setVoiceVolume] = useState(1);
     // 语音的两个细分开关（周期碎碎念 / 待办提醒）：与总开关同一套语义，初值 false 是内置默认。
     const [voiceWhisperEnabled, setVoiceWhisperEnabled] = useState(false);
     const [voiceTodoEnabled, setVoiceTodoEnabled] = useState(false);
@@ -156,10 +163,10 @@ export function makePetConfigSection(rt: SettingsRuntime): FunctionComponent<{ c
     // AI 模型（条目级）：碎碎念 / 对话各自的服务商与模型，两者都留空 = 跟随当前对话；随「保存」整包写入。
     const [whisperModel, setWhisperModel] = useState<ModelSelection>({ provider: '', model: '' });
     const [chatModel, setChatModel] = useState<ModelSelection>({ provider: '', model: '' });
-    // 对话历史条数（全局默认）：初值 5 是内置默认，加载效应会用成品 main.chatMemoryRounds 覆盖。
-    const [chatMemory, setChatMemory] = useState(5);
-    // 对话配图张数上限（全局默认）：初值 10 是内置默认（砍掉整张清单约 2/3 开销），加载后由成品值覆盖。
-    const [chatImageLimit, setChatImageLimit] = useState(10);
+    // 对话历史条数（全局默认）：初值 10 是内置默认，加载效应会用成品 main.chatMemoryRounds 覆盖。
+    const [chatMemory, setChatMemory] = useState(10);
+    // 对话配图张数上限（全局默认）：初值 20 是内置默认，加载后由成品值覆盖。
+    const [chatImageLimit, setChatImageLimit] = useState(20);
     // 气泡停留时长（全局默认，秒）：初值即内置默认，加载效应会用成品 main.bubbleDurationSec 覆盖。
     const [bubbleDuration, setBubbleDuration] = useState(DEFAULT_BUBBLE_DURATION_SEC);
 
@@ -180,6 +187,7 @@ export function makePetConfigSection(rt: SettingsRuntime): FunctionComponent<{ c
         if (patch.trayEnabled !== undefined) setTrayEnabled(patch.trayEnabled);
         if (patch.voiceEnabled !== undefined) setVoiceEnabled(patch.voiceEnabled);
         if (patch.voiceName !== undefined) setVoiceName(patch.voiceName);
+        if (patch.voiceVolume !== undefined) setVoiceVolume(patch.voiceVolume);
         if (patch.voiceWhisperEnabled !== undefined) setVoiceWhisperEnabled(patch.voiceWhisperEnabled);
         if (patch.voiceTodoEnabled !== undefined) setVoiceTodoEnabled(patch.voiceTodoEnabled);
         if (patch.physics !== undefined) setPhysics(patch.physics);
@@ -264,6 +272,7 @@ export function makePetConfigSection(rt: SettingsRuntime): FunctionComponent<{ c
         trayEnabled,
         voiceEnabled,
         voiceName,
+        voiceVolume,
         voiceWhisperEnabled,
         voiceTodoEnabled,
         physics,
@@ -347,11 +356,13 @@ export function makePetConfigSection(rt: SettingsRuntime): FunctionComponent<{ c
           busy,
           enabled: voiceEnabled,
           voiceName,
+          volume: voiceVolume,
           voices: voiceOptions,
           whisperEnabled: voiceWhisperEnabled,
           todoEnabled: voiceTodoEnabled,
           onToggle: setVoiceEnabled,
           onVoiceChange: setVoiceName,
+          onVolumeChange: setVoiceVolume,
           onWhisperToggle: setVoiceWhisperEnabled,
           onTodoToggle: setVoiceTodoEnabled,
         }),

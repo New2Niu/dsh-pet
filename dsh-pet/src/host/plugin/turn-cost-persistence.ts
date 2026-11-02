@@ -103,7 +103,8 @@ export function createTurnCostPersistence(input: TurnCostPersistenceInput): Turn
   };
 
   const load = async (): Promise<void> => {
-    let raw: unknown = null;
+    // 不用初值：read 抛错时 finally 之后就走不到，raw 只在 try 正常结束时被读。
+    let raw: unknown;
     try {
       raw = await read(file, log);
       // 卸载后才回来的结果直接丢掉：这时候内存账本可能已经被清，合进去反而会写回旧账。

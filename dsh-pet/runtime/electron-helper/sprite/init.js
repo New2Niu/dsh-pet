@@ -86,6 +86,8 @@ Object.assign(PetSprite.prototype, {
     this.whisperTimer = null;
     this.whisperView = null;
     this.whisperText = '';
+    // 收起计划：合成期间挂起计时，播完再留尾巴（状态机在 shared/bubble-hold，与浏览器端同一份）
+    this.whisperHold = S.BUBBLE_HOLD_IDLE;
     // 配图名称（配置 memes 的键；whisperImageEnabled 开启时由 host 随机抽定，随文本一起来）
     this.whisperImage = '';
     // 配图地址（与 whisperImage 二选一）：两种形态由字段名区分，不靠嗅探。
@@ -204,9 +206,11 @@ Object.assign(PetSprite.prototype, {
     // 拖一张图到宠物身上：直接开对话并挂成待发送图（浏览器端同一套判据）
     this.hit.addEventListener('dragover', (e) => this.onDragOverImage(e), { signal: ac.signal });
     this.hit.addEventListener('drop', (e) => this.onDropImage(e), { signal: ac.signal });
-    // 悬停时按键：L 开对话、按住 M 说话、D 开关待办、S 切换睡/醒。
+    // 悬停时按键：L 开对话、按住 M 说话、D 开关待办、S 截图、Z 切换睡/醒。
     // 窗口未被聚焦时收不到按键（透明窗用 showInactive 显示，不抢焦点）
     window.addEventListener('keydown', (e) => this.onHotkey(e), { signal: ac.signal });
+    // 悬停时粘贴：剪贴板里有图就直接开对话（或塞进已经开着的对话）
+    window.addEventListener('paste', (e) => this.onPasteImage(e), { signal: ac.signal });
     // 按住说话靠 keyup 收尾：这条必须在按住期间一直有效，与 keydown 同一生命周期
     window.addEventListener('keyup', (e) => this.onHotkeyUp(e), { signal: ac.signal });
     // 文本输入拿到焦点时补一次系统键盘焦点：X11/KWin 不会因为 DOM 聚焦就把键盘焦点给窗口，
