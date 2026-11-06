@@ -2,7 +2,7 @@
  * 「吃白饭」的常量：节奏参数、台词池与覆盖层样式。
  *
  * 台词与节奏是玩法的一部分，不开放给配置；用哪 5 段动画由 animations.baifan 决定，
- * 地址在 ./assets 里按「素材根 + 动画名」拼，与本插件其他动画同一条路。
+ * 名字在 ./assets 里按槽位摆好，点播走 name 形态（素材地址由渲染端自己拼）。
  * @module dsh-pet/src/client/baifan/constants
  */
 

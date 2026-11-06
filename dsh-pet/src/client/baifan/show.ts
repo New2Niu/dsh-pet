@@ -79,7 +79,7 @@ export function createShow(deps: ShowDeps): Show {
 
   /** 本场代次：每次开演 +1，旧场收尾时不能动新的一场。 */
   let showGen = 0;
-  /** 这一场用的五段动画地址（按被点宠物所属条目的配置算出来）。 */
+  /** 这一场用的五段动画名（按被点宠物所属条目的配置算出来）。 */
   let current: ActivityAssets = { chase: '', descend: '', eatBall: '', eatBowl: '', expect: '' };
   /** 掉饭定时器。 */
   let spawnTimer = 0;
@@ -124,11 +124,16 @@ export function createShow(deps: ShowDeps): Show {
     return sprite;
   }
 
-  /** 点播一段自带素材；返回点播编号。 */
-  async function playAnim(url: string, dir?: 'left' | 'right'): Promise<string | null> {
+  /**
+   * 点播一段池内动画（`name` 形态，与右键「动作」同一条路）；返回点播编号。
+   *
+   * 不发绝对地址：宿主 `url` 形态只收 http(s)，而桌面版页面 origin 是 `dsh-app://`，拼出来的
+   * 地址会被判 bad-request。名字走宿主白名单（含 `animations.baifan`），素材地址由渲染端自己拼。
+   */
+  async function playAnim(name: string, dir?: 'left' | 'right'): Promise<string | null> {
     const lease = lock?.id() ?? null;
     if (lease === null) throw new Halted();
-    const body: Record<string, unknown> = { url };
+    const body: Record<string, unknown> = { name };
     if (dir !== undefined) body.facing = dir;
     const r = await transport.call('POST', '/anim?pet=' + enc(petId) + '&surface=web&lock=' + enc(lease), body);
     if (r.ok !== true) {

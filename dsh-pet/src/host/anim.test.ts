@@ -36,6 +36,8 @@ const ANIMATIONS = {
       '档位1', // 单候选
     ],
   },
+  // 内置玩法「吃白饭」：不在「动作」树里，但同样是 name 形态可点播的真实素材
+  baifan: ['开心小跑', '侧身急躁跑', '期待开饭', '吃饭·碗饭', '吃饭团'],
 };
 
 const cfg = {
@@ -89,7 +91,16 @@ describe('animationNames —— 与右键菜单同一份动画集合', () => {
   });
 
   test('形状非法一律当空池（不抛）', () => {
-    for (const bad of [undefined, null, 42, 'x', [], { idle: 'not-array' }, { moves: { actions: 'x' } }]) {
+    for (const bad of [
+      undefined,
+      null,
+      42,
+      'x',
+      [],
+      { idle: 'not-array' },
+      { moves: { actions: 'x' } },
+      { baifan: 'x' },
+    ]) {
       assert.deepEqual(animationNames(bad), []);
     }
   });
@@ -97,6 +108,12 @@ describe('animationNames —— 与右键菜单同一份动画集合', () => {
   test('过滤非字符串与空串（配置里混进脏值不至于让它变成合法动画名）', () => {
     const dirty = { idle: ['A', '', null, 3, undefined, 'B'] };
     assert.deepEqual(animationNames(dirty), ['A', 'B']);
+  });
+
+  test('内置玩法 animations.baifan 的槽位名也在集合里，且排在菜单树之后', () => {
+    const names = animationNames(ANIMATIONS);
+    for (const n of ANIMATIONS.baifan) assert.ok(names.includes(n), `缺少 ${n}`);
+    assert.deepEqual(names.slice(-5), ANIMATIONS.baifan, 'baifan 追加在末尾，「动作」树的顺序不受影响');
   });
 });
 
@@ -126,6 +143,14 @@ describe('decideAnim —— 名字校验', () => {
   test('全部七个池的名字都能点播', () => {
     for (const name of animationNames(ANIMATIONS)) {
       assert.equal(decide({ name }).ok, true, `${name} 应可点播`);
+    }
+  });
+
+  test('内置玩法「吃白饭」的槽位名可点播（玩法只能走 name 形态）', () => {
+    for (const name of ANIMATIONS.baifan) {
+      const d = decide({ name });
+      assert.equal(d.ok, true, `${name} 应可点播`);
+      assert.equal(d.ok === true && d.name, name);
     }
   });
 });

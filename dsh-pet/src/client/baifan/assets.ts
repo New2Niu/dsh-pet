@@ -1,15 +1,15 @@
 /**
- * 「吃白饭」的动画地址：把配置 animations.baifan 的 5 个名字拼成点播地址。
+ * 「吃白饭」的动画槽位：把 `animations.baifan` 的 5 个名字按玩法契约摆好。
  *
- * 与插件其他动画同一条路（./pet/animation/assets 的 animationAssetUrl），素材根与动画名都编码；
- * 点播接口的 url 形态只收完整 http(s) 地址，所以这里补上 origin。
  * 槽位顺序是玩法契约：跑向底部 / 追饭侧身跑 / 期待 / 吃碗饭 / 吃饭团。
+ * 这里**只留名字、不拼地址**：点播走 `name` 形态（与右键「动作」同一条路），素材地址由渲染端
+ * 按它自己的素材根与扩展名拼（见 ./pet/animation/assets 的 animationAssetUrl）。
+ * 不能拼绝对地址——宿主 url 形态只收 http(s)，而桌面版页面的 origin 是 `dsh-app://`，
+ * 那样的地址会被判 bad-request，演出根本起不来。
  * @module dsh-pet/src/client/baifan/assets
  */
-import { ANIMATION_EXT } from '../../shared/constants.ts';
-import { animationAssetUrl } from '../pet/animation/assets.ts';
 
-/** 一场演出要用的五段动画。 */
+/** 一场演出要用的五段动画名。 */
 export interface ActivityAssets {
   /** 跑向屏幕底部（一次性）。 */
   descend: string;
@@ -24,21 +24,19 @@ export interface ActivityAssets {
 }
 
 /**
- * 按配置拼五段动画的地址。
+ * 按槽位取五段动画名。
  *
- * @param names - `animations.baifan` 的 5 个动画名（顺序即槽位）。
- * @param assetRoot - 被点宠物所属条目的素材根。
- * @param id - 宠物 id；素材根为空时的兜底。
- * @returns 五段动画的完整 http(s) 地址。
+ * @param names - `animations.baifan` 的 5 个动画名（顺序即槽位）；缺槽位按空串处理，
+ *   点播会以 `unknown-animation` 显式失败，而不是拿错段去播。
+ * @returns 五段动画名。
  */
-export function activityAssets(names: readonly string[], assetRoot: string, id: string): ActivityAssets {
-  const url = (anim: string): string =>
-    window.location.origin + animationAssetUrl({ assetRoot, id, anim, ext: ANIMATION_EXT });
+export function activityAssets(names: readonly string[]): ActivityAssets {
+  const at = (index: number): string => names[index] ?? '';
   return {
-    descend: url(names[0] ?? ''),
-    chase: url(names[1] ?? ''),
-    expect: url(names[2] ?? ''),
-    eatBowl: url(names[3] ?? ''),
-    eatBall: url(names[4] ?? ''),
+    descend: at(0),
+    chase: at(1),
+    expect: at(2),
+    eatBowl: at(3),
+    eatBall: at(4),
   };
 }

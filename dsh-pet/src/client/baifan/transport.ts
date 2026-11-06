@@ -26,7 +26,7 @@ interface PoseApi {
     currentTime: number;
     duration: number;
     paused: boolean;
-    /** 当前点播的素材地址（url 形态下就是那段地址）。 */
+    /** 当前点播的动画名（url 形态下就是那段地址）。 */
     anim?: string;
   } | null;
 }
