@@ -6,6 +6,7 @@
  * 摆位复用 shared/tooltip 的 tooltipPlacement，外观在 ./panel-css 的 .pet-chat-tip。
  * @module dsh-pet/src/client/chat/tooltip
  */
+import { appendPetLayer } from '../../shared/dom-layer.ts';
 import { tooltipPlacement } from '../../shared/tooltip.ts';
 import { px } from './metrics.ts';
 
@@ -32,7 +33,7 @@ function ensureTip(): HTMLDivElement {
   const el = document.createElement('div');
   el.setAttribute('class', TIP_CLASS);
   el.setAttribute('role', 'tooltip');
-  document.body.appendChild(el);
+  appendPetLayer(el);
   tipEl = el;
   // 监听目标当场捕获：回收时全局可能已经不在（宿主换页、测试拆环境），不能回头再读 window
   const win = window;

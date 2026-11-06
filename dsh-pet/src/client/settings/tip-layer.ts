@@ -7,6 +7,7 @@
  * 全局状态只有一份监听与一个气泡：`attachTipLayer()` 装、它返回的函数拆，重复装返回同一份。
  * @module dsh-pet/src/client/settings/tip-layer
  */
+import { appendPetLayer } from '../../shared/dom-layer.ts';
 import { tooltipPlacement } from '../../shared/tooltip.ts';
 
 /** 气泡 class，外观在 ./css。 */
@@ -57,7 +58,7 @@ function ensureTip(): HTMLDivElement {
   const el = document.createElement('div');
   el.setAttribute('class', TIP_CLASS);
   el.setAttribute('role', 'tooltip');
-  document.body.appendChild(el);
+  appendPetLayer(el);
   bubble = el;
   return el;
 }

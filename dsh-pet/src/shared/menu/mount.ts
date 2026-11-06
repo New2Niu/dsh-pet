@@ -5,6 +5,7 @@
  * 必须始终成立：卸载时必须摘掉全部监听，不留悬挂元素。
  * @module dsh-pet/src/shared/menu/mount
  */
+import { appendPetLayer } from '../dom-layer.ts';
 import type { ContextMenuMount, MenuBranch, MenuLeaf, MenuNode } from './types.ts';
 import { pickPanelPosition } from './position.ts';
 
@@ -227,7 +228,7 @@ export function mountContextMenu(opts: {
   rootPanel.style.display = 'block';
 
   // 必须先 append 到文档：未入文档时量不到面板尺寸，一切「静默无显示」
-  document.body.appendChild(root);
+  appendPetLayer(root);
 
   // 根面板定位：按 (x,y) 下落，超出 clamp 矩形时夹回（与子面板同一套逻辑但无触发项）
   rootPanel.style.left = '';

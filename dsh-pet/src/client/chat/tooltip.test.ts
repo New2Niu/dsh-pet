@@ -12,12 +12,23 @@ import assert from 'node:assert/strict';
 
 import { disposeTip, TIP_CLASS, tipAttrs } from './tooltip.ts';
 
+/** 行内样式替身：`setProperty` 是真 DOM 里唯一能写带短横线属性名的方式。 */
+function makeStyle(): Record<string, string> {
+  const style: Record<string, string> = {};
+  Object.defineProperty(style, 'setProperty', {
+    value: (name: string, value: string) => {
+      style[name] = value;
+    },
+  });
+  return style;
+}
+
 /** 极简元素替身：`parentNode` 与 `remove()` 连通，用来验证「挂到 body / 从 body 摘掉」。 */
 class FakeEl {
   readonly tag: string;
   readonly attrs = new Map<string, string>();
   readonly classes = new Set<string>();
-  readonly style: Record<string, string> = {};
+  readonly style: Record<string, string> = makeStyle();
   readonly children: FakeEl[] = [];
   parent: FakeEl | null = null;
   textContent = '';

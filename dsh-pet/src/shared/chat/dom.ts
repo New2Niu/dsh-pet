@@ -3,6 +3,7 @@
  * 只建元素并把能力接上，不发送、不定位、不管关闭；录音的状态机在 chat/hear-control。
  * @module dsh-pet/src/shared/chat/dom
  */
+import { appendPetLayer } from '../dom-layer.ts';
 import { type EncodedImage, encodeImageFile } from './encode.ts';
 import { createHearControl } from './hear-control.ts';
 import { IMAGE_ACCEPT, firstImageFromClipboard, isImageFile } from './image-pick.ts';
@@ -137,7 +138,7 @@ export function createChatDom(opts: { capture?: () => Promise<EncodedImage>; hea
   actions.append(pickBtn, shotBtn, micBtn, fileInput, attach);
 
   root.append(input, actions, hint, err);
-  document.body.appendChild(root);
+  appendPetLayer(root);
 
   const resizeInput = enableAutoResize(input, root);
 

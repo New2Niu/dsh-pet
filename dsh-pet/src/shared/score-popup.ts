@@ -4,6 +4,7 @@
  * 弹窗显示 +N 分与速度/大小明细，点外或 Esc 立即关闭。
  * @module dsh-pet/src/shared/score-popup
  */
+import { appendPetLayer } from './dom-layer.ts';
 import { clickScore, SCORE_MIN_SPEED } from './score.ts';
 
 /** 弹窗展示时长（ms）：积分反馈比气泡的停留时长短，够读即可。 */
@@ -61,7 +62,7 @@ export function spawnScoreBurst(x: number, y: number): void {
   injectScoreCss();
   const root = document.createElement('div');
   root.className = 'dsh-pet-score-burst';
-  document.body.appendChild(root);
+  appendPetLayer(root);
   interface P {
     el: HTMLDivElement;
     vx: number;
@@ -143,7 +144,7 @@ export function mountScorePopup(opts: {
   sub.textContent = '速度 ' + Math.round(opts.speed) + ' · 大小 ' + Math.round(opts.size);
   root.appendChild(val);
   root.appendChild(sub);
-  document.body.appendChild(root);
+  appendPetLayer(root);
 
   // 定位（先量后定位；同 mountChatDialog）
   const rr = root.getBoundingClientRect();

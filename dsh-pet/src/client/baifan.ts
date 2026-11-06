@@ -12,6 +12,7 @@ import { ACTIVITY, CSS, LABEL, OWNER, ROOT_ID, ROUTE, STYLE_TAG } from './baifan
 import { createScene } from './baifan/scene.ts';
 import { createShow, type Show } from './baifan/show.ts';
 import { createTransport } from './baifan/transport.ts';
+import { appendPetLayer } from '../shared/dom-layer.ts';
 
 /** 点击轮询间隔（毫秒）：读的是内存 Map，间隔只决定点击到响应的最大延迟。 */
 const POLL_MS = 150;
@@ -95,7 +96,7 @@ export function mountBaifan(ctx: BaifanContext): () => void {
   const toastEl = document.createElement('div');
   toastEl.className = 'bf-toast';
   layer.appendChild(toastEl);
-  document.body.appendChild(layer);
+  appendPetLayer(layer);
 
   const scene = createScene(layer, toastEl);
   const transport = createTransport(ctx);
