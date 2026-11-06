@@ -25,16 +25,32 @@ export function sendJson(res: ServerResponse, status: number, body: unknown, cor
   res.end(payload);
 }
 
-/** 回静态资源，附带只允许同源脚本与样式的 CSP。 */
+/** 回静态资源，附带只允许同源脚本、样式与同源 blob 图片的 CSP。 */
 export function sendAsset(res: ServerResponse, body: string, type: string): void {
   res.writeHead(200, {
     'content-type': `${type}; charset=utf-8`,
     'content-length': Buffer.byteLength(body),
+    // blob: 只给头像预览与语音播放用：图片走带令牌的 fetch 再转 blob，不能直接放进 img src（同源 img 不带 Origin，会被判成文件来源）。
+    // media-src 必须显式放行 blob:：语音是合成后转 blob URL 再交给 <audio> 的，缺这条会落回
+    // default-src 'none'，表现是 NotSupportedError「no supported source」而不是 403。
+    // base-uri 取 'self'：设置页要用 <base href="/"> 把文档基准纠正到站点根，插件路由在根下而不在
+    // /standalone-ai/ 目录里；仍限定同源，外部 base 一律不允许。
     'content-security-policy':
-      "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+      "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' blob:; media-src 'self' blob:; connect-src 'self'; base-uri 'self'; form-action 'none'; frame-ancestors 'none'",
     'x-frame-options': 'DENY',
   });
   res.end(body);
+}
+
+/** 回设置页标签图标：二进制 PNG，不参与 CSP 与嗅探。 */
+export function sendIcon(res: ServerResponse, icon: Buffer): void {
+  res.writeHead(200, {
+    'content-type': 'image/png',
+    'content-length': icon.length,
+    'cache-control': 'no-store',
+    'x-content-type-options': 'nosniff',
+  });
+  res.end(icon);
 }
 
 /** 记录并回一个不含细节的 500。 */

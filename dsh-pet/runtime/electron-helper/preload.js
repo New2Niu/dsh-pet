@@ -12,8 +12,8 @@ contextBridge.exposeInMainWorld('petBridge', {
   // 宠物窗口逐帧跟随：x/y/width/height 是窗口内容区坐标（用于移动窗口），
   // boxX/boxY 是宠物包围盒左上角的工作区坐标——碰撞站场必须用包围盒，窗口坐标差半只宠物宽。
   // size/bottomPad 让静止宠物也登记进碰撞站场，vx/vy 是当前速度（静止/拖拽为 0）。
-  // marginL/marginT 是窗口左右/上余量：上边距按气泡最大高度加高后余量不再四边相等，
-  // 主进程不能按「窗口宽/4」反推命中区，所以必须上报。
+  // marginL/marginT 是窗口原点到本体原点的距离：上边距按气泡最大高度加高后四边不相等，
+  // 窗口被系统钳回工作区后还会变大，主进程不能按「窗口宽/4」反推命中区，所以必须上报。
   setBounds(x, y, width, height, boxX, boxY, size, bottomPad, vx, vy, marginL, marginT) {
     ipcRenderer.send('pet:set-bounds', {
       x,
@@ -52,6 +52,11 @@ contextBridge.exposeInMainWorld('petBridge', {
   // 右键菜单「打开网站」：去向由主进程按宿主形态决定——桌面应用宿主唤起主窗口，否则用系统浏览器打开站点。
   openDshSite(url) {
     ipcRenderer.send('pet:open-site', { url });
+  },
+  // 只把 DSH 主窗口提到前台：走应用自注册的 dsh:// 协议（单实例锁会让它聚焦），被别的窗口挡住也有效。
+  // 主进程按宿主形态门控：只有桌面应用宿主才真发，web 形态下发它会把桌面版拉起来。
+  focusDshHost() {
+    ipcRenderer.send('pet:focus-host');
   },
   // 截一帧桌面（宠物所在那块屏）：一次性读取，不建流、不留存。
   // 返回 { mediaType, data, width, height, bytes } 或 null（取不到画面）。

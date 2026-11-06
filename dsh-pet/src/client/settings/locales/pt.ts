@@ -8,6 +8,13 @@ export const pt: Record<Key, string> = {
   intro: 'Gerencie vários pets: cada um tem tamanho e posição próprios (aplicado na hora após salvar).',
   // 卡片标题与卡片级说明；说明统一进问号气泡。
   petCardTitle: 'Pet',
+  avatarLabel: 'Avatar',
+  avatarHint:
+    'A imagem pequena exibida ao lado das mensagens deste pet no painel de conversa. Sem envio, usa-se o logotipo padrão do plugin; o envio vale na hora e substitui o anterior, sem clicar em "Salvar".',
+  avatarUpload: 'Enviar avatar',
+  avatarChange: 'Trocar',
+  avatarUploading: 'Enviando…',
+  avatarUploaded: 'Avatar atualizado',
   petCardHint:
     'Ajustes por pet: nome / tamanho / exibição / posição / deslocamentos / os quatro interruptores. Clique em "Salvar" no fim para aplicar na hora.',
   globalTitle: 'Interruptores globais',
@@ -278,5 +285,12 @@ export const pt: Record<Key, string> = {
   uninstallStep2: '2. Remova o plugin em si (no terminal; isto também o tira da camada de bundle do profile):',
   uninstallStep3:
     '3. Apague os locais acima conforme a necessidade: caches não fazem falta; apagar "dados do usuário do plugin" perde a configuração e a memória da conversa (faça backup do main-config.jsonc antes, se quiser manter).',
+  motionTitle: 'Frequência de ações',
+  motionHint:
+    'Quatro campos: espera / giro / movimento são editáveis; a ação aleatória é calculada (100 − as outras três). Padrão global para todos os pets; um pet pack pode sobrescrevê-lo no arquivo do tipo.',
+  'motion.idle': 'Em espera',
+  'motion.turn': 'Giro',
+  'motion.move': 'Movimento',
+  'motion.action': 'Ação aleatória',
   uninstallCmd: 'dsh plugin --profile {profile} remove dsh-pet',
 };

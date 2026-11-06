@@ -158,8 +158,8 @@ export function createStandaloneContext(options: StandaloneContextOptions): Stan
       ? {
           standaloneAi: {
             isReady: () => ai.isReady(),
-            canWhisper: () => ai.canWhisper(),
-            whisperIntervalSec: () => ai.getSettings().whisperIntervalSec,
+            // 余额走独立模式自己的服务商与密钥：DSH 的 credential store 与账号服务在这里都不在场。
+            balanceAuth: () => ai.balanceAuth(),
           },
         }
       : {}),

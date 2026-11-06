@@ -9,6 +9,13 @@ export const fr: Record<Key, string> = {
     "Gérez plusieurs compagnons : chacun a sa taille et sa position (appliquées immédiatement après l'enregistrement).",
   // 卡片标题与卡片级说明；说明统一进问号气泡。
   petCardTitle: 'Compagnon',
+  avatarLabel: 'Avatar',
+  avatarHint:
+    'La petite image affichée à côté des messages de ce compagnon dans le panneau de discussion. Sans envoi, le logo par défaut du plugin est utilisé ; un envoi prend effet immédiatement et remplace le précédent, sans cliquer sur « Enregistrer ».',
+  avatarUpload: 'Envoyer un avatar',
+  avatarChange: 'Changer',
+  avatarUploading: 'Envoi…',
+  avatarUploaded: 'Avatar mis à jour',
   petCardHint:
     'Réglages par compagnon : nom / taille / affichage / coin / décalages / les quatre interrupteurs de fonctionnalités. Cliquez sur « Enregistrer » en bas pour appliquer immédiatement.',
   globalTitle: 'Interrupteurs globaux',
@@ -283,5 +290,12 @@ export const fr: Record<Key, string> = {
     '2. Retirez le plugin lui-même (dans un terminal ; il est aussi retiré de la couche bundle du profil) :',
   uninstallStep3:
     '3. Supprimez les emplacements ci-dessus selon vos besoins : les caches sont sans risque ; supprimer les « données utilisateur du plugin » fait perdre la configuration et la mémoire de discussion (sauvegardez main-config.jsonc si vous voulez le garder).',
+  motionTitle: 'Fréquence des actions',
+  motionHint:
+    "Quatre champs : repos / rotation / déplacement sont modifiables ; l'action aléatoire est calculée (100 − les trois autres). Valeur globale pour tous les compagnons ; un pet pack peut la remplacer dans son fichier de type.",
+  'motion.idle': 'Repos',
+  'motion.turn': 'Rotation',
+  'motion.move': 'Déplacement',
+  'motion.action': 'Action aléatoire',
   uninstallCmd: 'dsh plugin --profile {profile} remove dsh-pet',
 };

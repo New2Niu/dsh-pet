@@ -345,6 +345,16 @@ describe('HTTP boundary protects every route and settings', () => {
         void input;
         return { ok: true, message: '连接成功', reply: 'pong' };
       },
+      discoverModels: async (input: { baseUrl?: string }) => ({
+        ok: true as const,
+        models: [{ id: input.baseUrl ?? 'missing', name: 'M1' }],
+      }),
+      queryBalance: async () => ({
+        ok: true as const,
+        provider: 'deepseek-official',
+        shape: 'money' as const,
+        data: { wallets: [{ currency: 'CNY', total: '12.34', granted: '0.00', toppedUp: '12.34' }] },
+      }),
     };
     const server = await listenStandaloneServer({ port: 0, security, logger: silent, routes: [], ai });
     try {
@@ -354,6 +364,14 @@ describe('HTTP boundary protects every route and settings', () => {
       assert.equal(shell.status, 200);
       assert.match(shell.headers.get('content-security-policy') ?? '', /default-src 'none'/);
       assert.doesNotMatch(await shell.text(), new RegExp(security.token));
+      // 标签图标必须公开可读：浏览器取 favicon 既不带 Origin 也不带令牌，走令牌校验会 403。
+      // 源码形态下包内 assets 不可达（PACKAGE_ROOT 指向 src/），此时只要求语义明确的 404。
+      const icon = await fetch(base + '/standalone-ai/icon.png');
+      assert.notEqual(icon.status, 403, '图标不得要求令牌');
+      assert.ok(
+        icon.status === 404 || icon.headers.get('content-type') === 'image/png',
+        '图标要么缺失 404，要么是 PNG',
+      );
       assert.equal((await fetch(base + '/standalone-ai/settings')).status, 403);
       const read = await fetch(base + '/standalone-ai/settings', { headers });
       assert.deepEqual(await read.json(), { protocol: 'anthropic', model: 'x', hasKey: true });
@@ -384,16 +402,31 @@ describe('HTTP boundary protects every route and settings', () => {
       const saved = await fetch(base + '/standalone-ai/settings', {
         method: 'POST',
         headers,
-        body: JSON.stringify({ apiKey: '', enabled: false }),
+        body: JSON.stringify({ apiKey: '' }),
       });
       assert.equal(saved.status, 200);
-      assert.deepEqual(await saved.json(), { enabled: false, hasKey: true });
+      assert.deepEqual(await saved.json(), { hasKey: true });
       assert.equal(saves, 1);
       assert.equal((await fetch(base + '/standalone-ai/test')).status, 403);
       assert.equal((await fetch(base + '/standalone-ai/test', { headers })).status, 405);
       const testRes = await fetch(base + '/standalone-ai/test', { method: 'POST', headers, body: '{}' });
       assert.equal(testRes.status, 200);
       assert.deepEqual(await testRes.json(), { ok: true, message: '连接成功', reply: 'pong' });
+      assert.equal((await fetch(base + '/standalone-ai/models')).status, 403);
+      assert.equal((await fetch(base + '/standalone-ai/models', { headers })).status, 405);
+      const modelsRes = await fetch(base + '/standalone-ai/models', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ protocol: 'openai-compatible', baseUrl: 'https://draft.test/v1', apiKey: 'k' }),
+      });
+      assert.equal(modelsRes.status, 200);
+      // 回显草稿地址：证明表单里还没保存的地址被原样转给了发现逻辑。
+      assert.deepEqual(await modelsRes.json(), { ok: true, models: [{ id: 'https://draft.test/v1', name: 'M1' }] });
+      assert.equal((await fetch(base + '/standalone-ai/balance')).status, 403);
+      assert.equal((await fetch(base + '/standalone-ai/balance', { headers })).status, 405);
+      const balanceRes = await fetch(base + '/standalone-ai/balance', { method: 'POST', headers });
+      assert.equal(balanceRes.status, 200);
+      assert.equal((await balanceRes.json()).provider, 'deepseek-official');
       let last = 0;
       for (let i = 0; i < 25; i++)
         last = (await fetch(base + '/standalone-ai/settings', { method: 'POST', headers, body: '{}' })).status;

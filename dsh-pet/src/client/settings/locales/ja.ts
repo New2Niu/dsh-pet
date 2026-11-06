@@ -8,6 +8,13 @@ export const ja: Record<Key, string> = {
   intro: '複数のペットを管理できます。ペットごとにサイズと位置を個別に設定できます（保存するとすぐに反映されます）。',
   // 卡片标题与卡片级说明；说明统一进问号气泡。
   petCardTitle: 'ペットの設定',
+  avatarLabel: 'アバター',
+  avatarHint:
+    'チャットパネルでこのペットの発言の横に表示される小さな画像です。未アップロードならプラグインの既定画像が使われます。アップロードはすぐ反映され、以前の画像を上書きします（「保存」を押す必要はありません）。',
+  avatarUpload: 'アバターをアップロード',
+  avatarChange: '変更',
+  avatarUploading: 'アップロード中…',
+  avatarUploaded: 'アバターを更新しました',
   petCardHint:
     'ペットごとに個別設定します：名前 / サイズ / 表示位置 / 位置 / オフセット / 4つの機能スイッチ。設定後、最下部の「保存」をクリックするとすぐに反映されます。',
   globalTitle: 'グローバルスイッチ',
@@ -274,5 +281,12 @@ export const ja: Record<Key, string> = {
     '2. プラグイン本体を削除します（ターミナルで実行します。profile の bundle レイヤーからも同時に削除されます）：',
   uninstallStep3:
     '3. 上記の場所を必要に応じて削除します：キャッシュは削除しても影響ありません。「プラグインのユーザーデータ」を削除すると設定と会話メモリが失われます（残したい場合は中の main-config.jsonc を先にバックアップしてください）。',
+  motionTitle: 'アクション頻度',
+  motionHint:
+    '4つの欄：待機 / 方向転換 / 移動は編集でき、ランダムアクションは自動計算（100 − 残り3つ）。グローバルデフォルトで、すべてのペットに共通です。pet pack は自身の種類ファイルで上書きできます。',
+  'motion.idle': '待機',
+  'motion.turn': '方向転換',
+  'motion.move': '移動',
+  'motion.action': 'ランダムアクション',
   uninstallCmd: 'dsh plugin --profile {profile} remove dsh-pet',
 };

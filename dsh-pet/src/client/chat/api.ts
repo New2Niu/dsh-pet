@@ -110,8 +110,8 @@ export function groupRounds(messages: readonly ChatMessageView[]): ChatRound[] {
   return rounds;
 }
 
-/** 插件 logo 地址：对话面板拿它当宠物头像。 */
-export const LOGO_URL = ROUTE_PATH + '/logo';
+/** 插件 logo 地址与按宠物的头像地址：拼装规则在 shared/avatar.ts，面板只做再导出。 */
+export { avatarUrl, LOGO_URL } from '../../shared/avatar.ts';
 
 /**
  * 让宠物重演一次记忆里记下的动作（聊天窗口「播放动作」按钮）。
@@ -210,6 +210,21 @@ export function memoryBoundaryIndex(totalRounds: number, memoryRounds: number | 
   if (memoryRounds === undefined || memoryRounds <= 0) return null;
   const cut = totalRounds - memoryRounds;
   return cut > 0 ? cut : null;
+}
+
+/** 分界线节点的定位标记：工具栏的「记忆线」按它找元素，不依赖 class 名。 */
+export const MEMORY_LINE_ATTR = 'data-pet-chat-memory';
+
+/**
+ * 让记忆分界线进入可视窗口所需的最少展示轮数。
+ *
+ * 线插在倒数第 `memoryRounds` 轮之前，窗口里至少要有它上面那一轮，线才画得出来。
+ *
+ * @param memoryRounds - 该条目保留的轮数。
+ * @returns 需要的展示轮数；`memoryRounds` 非法（`<= 0`）时返回 0（没有线，无需放轮）。
+ */
+export function roundsToRevealMemory(memoryRounds: number): number {
+  return memoryRounds > 0 ? memoryRounds + 1 : 0;
 }
 
 /** 一次取满接口允许的轮数（宿主上限 200）：面板在本地按需展示，不做分页取数。 */

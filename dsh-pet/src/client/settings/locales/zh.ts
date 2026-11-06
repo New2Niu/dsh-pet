@@ -7,6 +7,13 @@ export const zh = {
   intro: '管理多个桌宠：每个宠物可独立设置大小与位置（保存后即时生效）。',
   // 卡片标题与卡片级说明；说明统一进问号气泡。
   petCardTitle: '宠物配置',
+  avatarLabel: '头像',
+  avatarHint:
+    '对话面板里这条宠物消息旁边显示的小图。没上传过就是插件默认图；上传后立即生效并覆盖旧图，不需要点「保存」。',
+  avatarUpload: '上传头像',
+  avatarChange: '更换',
+  avatarUploading: '上传中…',
+  avatarUploaded: '头像已更新',
   petCardHint:
     '每只宠物独立配置：名字 / 大小 / 显示位置 / 位置 / 偏移 / 四个功能开关。改完点最下面的「保存」即时生效。',
   globalTitle: '全局开关',
@@ -251,6 +258,13 @@ export const zh = {
   uninstallStep2: '2. 卸载插件本体（终端执行，会同时从 profile 的 bundle 层移除）：',
   uninstallStep3:
     '3. 按需删除上面的位置：缓存类删了无影响；「插件用户数据」删了会丢配置与对话记忆（想保留就先备份其中的 main-config.jsonc）。',
+  motionTitle: '动作频率',
+  motionHint:
+    '四个框：待机 / 转向 / 移动可改，随机动作自动算（= 100 − 其余三项）。全局默认，所有宠物共用；pet pack 可在自己种类文件里覆盖。',
+  'motion.idle': '待机',
+  'motion.turn': '转向',
+  'motion.move': '移动',
+  'motion.action': '随机动作',
   uninstallCmd: 'dsh plugin --profile {profile} remove dsh-pet',
 };
 

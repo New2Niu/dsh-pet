@@ -21,7 +21,7 @@ export interface StateLeaf {
  *  不能塞进每秒一次的 /state。当前只有 POST /pet-display 写它：桌面端右键改显示位置时，浏览器
  *  页面不是发起方，只能靠这个信号知道配置被别处改过；保存 / 同步配置的调用方自己拿到了成品聚合，
  *  所以不写。 */
-export type SectionName = 'balance' | 'workStatus' | 'notify' | 'config' | 'menu' | 'turnCost';
+export type SectionName = 'balance' | 'workStatus' | 'notify' | 'config' | 'menu' | 'turnCost' | 'focusSession';
 
 /** 每宠物段（say = 要说的话；anim = 要播的动画名；position = 要挪到的位置；throw = 要给的初速度；
  *  lock = 占用锁状态；sleep = 睡觉状态）。
@@ -113,6 +113,9 @@ export class PollStateStore {
       // 每轮花费（sessionId → turn → `¥0.0021`）：只给对话界面在「用量」右侧补一句，
       // 不参与宠物渲染。有上限、只在内存，见 src/host/turn-costs。
       turnCost: emptyLeaf(),
+      // 桌面宠物点会话气泡后的跳转意图（`POST /focus-session`）：页面据此切会话。
+      // 一次性信号：带 ts，消费端据它判重，页面晚于写入加载时仍可重放一次。
+      focusSession: emptyLeaf(),
     };
     this.pets = new Map();
     this.waiters = new Set();

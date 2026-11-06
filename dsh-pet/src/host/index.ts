@@ -45,13 +45,14 @@ export function apply(ctx: any): void {
     thumbUserRoot,
     memeDirsFor,
     standaloneAiPolicy,
+    standaloneAiBalance,
     state,
     playback,
     workStatus,
     EXTERNAL_WORK_SESSION,
     nextExternalWorkSeq,
   } = setup;
-  const workStatusBridge = createWorkStatusBridge({ state, workStatus });
+  const workStatusBridge = createWorkStatusBridge({ state, workStatus, EXTERNAL_WORK_SESSION });
   const { publishWorkStatus, publishTurnCosts, stopWorkStatusFlush } = workStatusBridge;
 
   // 每轮花费账本：内存 + 磁盘副本（落在插件用户数据根，与 todos.json / memory.json 同一个目录）。
@@ -95,7 +96,15 @@ export function apply(ctx: any): void {
   const chatMemory = createChatMemory({ ctx, configPaths, log, memeDirsFor, playback, state, userRoot });
   const { lastWhisperAt, publishWhisper, publishSleepTalk, chatWithPet, getActivePetId, setActivePetId } = chatMemory;
 
-  const balancePoll = createBalancePoll({ ctx, configPaths, getActivePetId, log, state, userRoot });
+  const balancePoll = createBalancePoll({
+    ctx,
+    configPaths,
+    getActivePetId,
+    log,
+    state,
+    userRoot,
+    standaloneAiBalance,
+  });
   const { effectivePetList, balancePeriodSec, whisperPeriodSec, refreshBalance, resolveActivePetId, petDisplayName } =
     balancePoll;
 

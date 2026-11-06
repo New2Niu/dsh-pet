@@ -8,6 +8,13 @@ export const en: Record<Key, string> = {
   intro: 'Manage multiple pets: each pet has its own size and position (applies instantly after saving).',
   // 卡片标题与卡片级说明；说明统一进问号气泡。
   petCardTitle: 'Pet',
+  avatarLabel: 'Avatar',
+  avatarHint:
+    'The small image shown next to this pet’s messages in the chat panel. Without an upload it falls back to the plugin logo; an upload takes effect immediately and replaces the previous one — no need to click Save.',
+  avatarUpload: 'Upload avatar',
+  avatarChange: 'Change',
+  avatarUploading: 'Uploading…',
+  avatarUploaded: 'Avatar updated',
   petCardHint:
     'Per-pet settings: name / size / display / corner / offsets / the four feature switches. Click "Save" at the bottom to apply instantly.',
   globalTitle: 'Global switches',
@@ -276,5 +283,12 @@ export const en: Record<Key, string> = {
   uninstallStep2: '2. Remove the plugin itself (run in a terminal; this also drops it from the profile bundle layer):',
   uninstallStep3:
     '3. Delete the locations above as needed: cache folders are harmless; deleting "plugin user data" loses your config and chat memory (back up main-config.jsonc first if you want to keep it).',
+  motionTitle: 'Action frequency',
+  motionHint:
+    'Four boxes: idle / turn / move are editable, and the random action is computed (100 − the other three). Global default, shared by every pet; a pet pack may override it in its own kind file.',
+  'motion.idle': 'Idle',
+  'motion.turn': 'Turn',
+  'motion.move': 'Move',
+  'motion.action': 'Random action',
   uninstallCmd: 'dsh plugin --profile {profile} remove dsh-pet',
 };

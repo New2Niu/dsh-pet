@@ -239,8 +239,10 @@ describe('buildSaveBody —— 请求体字段', () => {
       chatImageLimit: 10,
       bubbleDurationSec: 15,
       font: {},
+      animationWeights: { idle: 10, turn: 5, move: 5 },
     } as unknown as SaveFields;
     assert.deepEqual(Object.keys(buildSaveBody(fields)).sort(), [
+      'animationWeights',
       'bubbleDurationSec',
       'chatAnimationEnabled',
       'chatImageEnabled',
