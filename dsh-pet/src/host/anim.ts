@@ -1,13 +1,11 @@
 /**
  * 点播动画（`POST /dsh-pet-7340/anim`）的纯决策层：判定该不该播、播哪一个，结论交给写入方。
  *
- * 不负责播放，也不写 S；与右键菜单「动作」树复用同一个动作处理函数。动画名必须落在能真实取到
- * 素材的集合里——播放端没有兜底（名字即文件名，404 表现为「点了没反应」），所以这条校验是硬要求，
- * 且必须能脱离 HTTP 单测。允许集合 = 菜单三级树叶里所有 anim 的并集（事实来源是 src/shared/menu.ts
- * 的 buildMenuTree()）**加上**内置玩法的 `animations.baifan` 槽位名——它们不在「动作」树里，
- * 但同样是该条目下的真实素材，而玩法点播走的就是同一条 name 形态。
- * 宿主不 import src/shared（DSH 单文件加载约束），故自包含实现一份，两侧守卫测试同时钉住这份口径。
- * 只依赖成品配置（动画池都在 animations 里），不碰文件系统。
+ * 不负责播放，也不写 S；与右键菜单「动作」树复用同一个动作处理函数。动画名必须落在允许集合里——
+ * 播放端没有兜底（名字即文件名，404 表现为「点了没反应」），所以这条校验是硬要求，且必须能
+ * 脱离 HTTP 单测。允许集合 = 菜单三级树叶里所有 anim 的并集 ∪ 玩法自带动画（`animations.baifan`）：
+ * 前者的来源是 src/shared/menu.ts 的 buildMenuTree()（宿主不 import src/shared，故自包含一份），
+ * 后者不进菜单、但同样是本插件自有素材（吃白饭按名字点播它）。只依赖成品配置，不碰文件系统。
  * 契约见 API.md 与 openapi.yaml。
  * @module dsh-pet/src/host/anim
  */
@@ -42,10 +40,7 @@ const petFacing = (v: unknown): PetFacing | null => (v === 'left' || v === 'righ
 /**
  * 该条目的 animations 配置 → 可点播的动画名（去重，保持首次出现顺序）。
  * 池子与顺序对齐 src/shared/menu.ts 的 buildMenuTree()：待机 → 转向 → 拖拽 → 点击回应 →
- * 移动 → 随机动作分类 → 事件（数组槽位展平）→ 内置玩法 baifan。
- * baifan 不在「动作」菜单里，但「吃白饭」的点播必须走 name 形态（与菜单动作同一条路），
- * 所以它的 5 个槽位名要在这里放行——绕 url 形态的话，桌面版页面 origin 不是 http(s)，拼出的
- * 绝对地址会被 bad-request 拦掉。
+ * 移动 → 随机动作分类 → 事件（数组槽位展平）；菜单池之后追加玩法池（`baifan`）。
  */
 export function animationNames(animations: unknown): string[] {
   const a = (animations && typeof animations === 'object' ? animations : {}) as Record<string, unknown>;
@@ -89,7 +84,8 @@ export function animationNames(animations: unknown): string[] {
     push(names);
   }
 
-  // 内置玩法「吃白饭」的 5 段动画：不在「动作」树里，但玩法点播走同一套 name 形态，必须放行。
+  // 玩法自带动画（吃白饭）：不在菜单树上，但同样是本插件自有素材，按名字点播。
+  // 追加在最后：菜单池的顺序被菜单树口径与顺序测试钉住，新玩法不该插进菜单序列中间。
   push(strings(a.baifan));
 
   return out;

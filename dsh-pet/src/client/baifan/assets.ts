@@ -1,11 +1,9 @@
 /**
- * 「吃白饭」的动画槽位：把 `animations.baifan` 的 5 个名字按玩法契约摆好。
+ * 「吃白饭」要用的五段动画名：从配置 animations.baifan 按槽位取出。
  *
- * 槽位顺序是玩法契约：跑向底部 / 追饭侧身跑 / 期待 / 吃碗饭 / 吃饭团。
- * 这里**只留名字、不拼地址**：点播走 `name` 形态（与右键「动作」同一条路），素材地址由渲染端
- * 按它自己的素材根与扩展名拼（见 ./pet/animation/assets 的 animationAssetUrl）。
- * 不能拼绝对地址——宿主 url 形态只收 http(s)，而桌面版页面的 origin 是 `dsh-app://`，
- * 那样的地址会被判 bad-request，演出根本起不来。
+ * 只取名字，不拼地址——点播走 `/anim` 的 name 形态，地址由各端渲染器按宠物素材根拼
+ * （网页端相对路径、桌面端用宿主下发的 BASE），因此不依赖页面 origin（桌面壳的 origin 不是 http）。
+ * 槽位顺序是玩法契约：跑向屏幕底部 / 追饭侧身跑 / 期待 / 吃碗饭 / 吃饭团。
  * @module dsh-pet/src/client/baifan/assets
  */
 
@@ -24,19 +22,17 @@ export interface ActivityAssets {
 }
 
 /**
- * 按槽位取五段动画名。
+ * 按配置取五段动画名。
  *
- * @param names - `animations.baifan` 的 5 个动画名（顺序即槽位）；缺槽位按空串处理，
- *   点播会以 `unknown-animation` 显式失败，而不是拿错段去播。
- * @returns 五段动画名。
+ * @param names - `animations.baifan` 的 5 个动画名（顺序即槽位）。
+ * @returns 五段动画名；配置缺项时为空串（调用方照旧点播，由宿主按名字校验）。
  */
 export function activityAssets(names: readonly string[]): ActivityAssets {
-  const at = (index: number): string => names[index] ?? '';
   return {
-    descend: at(0),
-    chase: at(1),
-    expect: at(2),
-    eatBowl: at(3),
-    eatBall: at(4),
+    descend: names[0] ?? '',
+    chase: names[1] ?? '',
+    expect: names[2] ?? '',
+    eatBowl: names[3] ?? '',
+    eatBall: names[4] ?? '',
   };
 }
