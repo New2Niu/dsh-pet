@@ -4,13 +4,16 @@
  * 注入按 `data-plugin-css` 去重：同一页面重复挂载不会长第二份样式。
  * @module dsh-pet/src/client/pet/css
  */
-import { ROUTE_PATH } from '../../shared/constants.ts';
+import { PET_ALPHA_FIX_ENABLED, ROUTE_PATH } from '../../shared/constants.ts';
 import { appendPetLayer } from '../../shared/dom-layer.ts';
 import { MENU_CSS } from '../../shared/menu.ts';
 import { TOOLTIP_CSS } from '../../shared/tooltip.ts';
 
 /** alpha 修正滤镜 SVG 的 id，CSS 与注入的 SVG 共用。 */
 const ALPHA_FIX_ID = 'dsh-pet-alpha-fix';
+
+/** 视频的 alpha 修正声明（带前导分号）：开关关闭时为空串，样式表里不留 filter。 */
+const ALPHA_FIX_FILTER = PET_ALPHA_FIX_ENABLED ? `;filter:url(#${ALPHA_FIX_ID})` : '';
 
 /**
  * 滤镜定义 SVG 的布局兜底样式：固定定位到原点、零尺寸、裁掉溢出、不拦指针。
@@ -30,8 +33,8 @@ const PET_CSS = [
   '.dsh-pet-root[data-corner="top-right"]{right:var(--dsh-pet-mx,24px);top:var(--dsh-pet-my,0)}',
   '.dsh-pet-root[data-corner="top-left"]{left:var(--dsh-pet-mx,24px);top:var(--dsh-pet-my,0)}',
   '.dsh-pet-stage{position:relative;width:var(--dsh-pet-size,462px);height:calc(var(--dsh-pet-size,462px)*9/16);pointer-events:none}',
-  // 与桌面 helper 同一条修正，滤镜定义见 ensureAlphaFilter。
-  '.dsh-pet-video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none;opacity:0;transition:opacity .18s ease;transform-origin:center;filter:url(#dsh-pet-alpha-fix)}',
+  // 与桌面 helper 同一条修正（开关是共享常量 PET_ALPHA_FIX_ENABLED），滤镜定义见 ensureAlphaFilter。
+  `.dsh-pet-video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none;opacity:0;transition:opacity .18s ease;transform-origin:center${ALPHA_FIX_FILTER}}`,
   '.dsh-pet-video.is-front{opacity:1}',
   // 兜底：滤镜定义节点必须留在文档里，但它绝不能参与宿主的布局（见 ensureAlphaFilter）。
   // 行内的零尺寸 SVG 会在 #root 之后生成一个匿名行盒，把 documentElement 撑高约 18–22px；
@@ -100,5 +103,5 @@ export function injectPetCss(): void {
   tag.dataset.pluginCss = cssTag;
   tag.textContent = PET_CSS;
   document.head.appendChild(tag);
-  ensureAlphaFilter();
+  if (PET_ALPHA_FIX_ENABLED) ensureAlphaFilter();
 }

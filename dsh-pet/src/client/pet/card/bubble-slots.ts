@@ -14,13 +14,14 @@ import {
   type BubbleHoldState,
 } from '../../../shared/bubble-hold.ts';
 import { subscribeVoiceState, subscribeVoiceUtterance, type VoiceState } from '../../../shared/voice.ts';
+import type { EnvState } from '../../../shared/state.ts';
 import { BUBBLE_DURATION_MS } from '../timings.ts';
 import type { Dispatch, ReactNode, SetStateAction } from 'react';
 import type * as ReactNS from 'react';
 import type { jsx } from 'react/jsx-runtime';
 
 /** 当前该挂哪个气泡；`none` 表示哪个条件都不成立。 */
-export type BubbleSlot = 'todo' | 'work-terminal' | 'whisper' | 'balance' | 'work' | 'none';
+export type BubbleSlot = 'todo' | 'work-terminal' | 'whisper' | 'balance' | 'env' | 'work' | 'none';
 
 /** 优先级判定的输入：全部是渲染期的既成事实，判定本身不产生副作用。 */
 export interface BubbleSlotInput {
@@ -53,6 +54,10 @@ export interface BubbleSlotInput {
   balanceEnabled: boolean;
   /** 本次余额是否手动请求；手动请求不受开关门控。 */
   balanceManual: boolean;
+  /** 环境气泡是否点亮。 */
+  envOn: boolean;
+  /** 环境数据是否已到达；null 表示还没有可用数据。 */
+  envAvailable: boolean;
 }
 
 /**
@@ -61,7 +66,7 @@ export interface BubbleSlotInput {
  * 终态任务只活一个停留时长（见配置 bubbleDurationSec），所以默认不让位；非终态常驻，让位零损失。
  * 例外是「用户点出来的余额气泡」：那是刚刚主动要的一眼，压过说话与任务气泡（待办面板仍独占）。
  *
- * @param input - 三种气泡的显隐与开关。
+ * @param input - 各气泡的显隐与开关。
  * @returns 命中的槽位；都不成立时为 `none`。
  */
 export function decideBubbleSlot(input: BubbleSlotInput): BubbleSlot {
@@ -73,6 +78,8 @@ export function decideBubbleSlot(input: BubbleSlotInput): BubbleSlot {
   if (input.workTerminal && input.workOn && input.workText && input.workStatusEnabled) return 'work-terminal';
   if (input.whisperOn && input.whisperText) return 'whisper';
   if (input.balanceOn && input.balanceAvailable && (input.balanceEnabled || input.balanceManual)) return 'balance';
+  // 环境排在余额之后：它是用户主动查的一次性结果，但不如余额那种「实时花销」紧迫
+  if (input.envOn && input.envAvailable) return 'env';
   if (input.workOn && input.workText && input.workStatusEnabled) return 'work';
   return 'none';
 }
@@ -123,10 +130,15 @@ export interface BubbleSlotsRuntime {
 /** 待办面板气泡组件；props 与 `client/todo-bubble.ts` 的 TodoBubble 一致。 */
 export type TodoBubbleComponent = (props: { on: boolean; onClose: () => void }) => ReactNode;
 
-/** 三种气泡组件。 */
+/** 环境气泡组件；props 与 `client/bubble.ts` 的 EnvBubble 一致。 */
+export type EnvBubbleComponent = (props: { state: EnvState; on: boolean }) => ReactNode;
+
+/** 四种气泡组件。 */
 export interface BubbleComponents {
   /** 余额气泡。 */
   balanceBubble: BalanceBubbleComponent;
+  /** 环境气泡。 */
+  envBubble: EnvBubbleComponent;
   /** 待办面板气泡。 */
   todoBubble: TodoBubbleComponent;
   /** 说话气泡。 */
@@ -154,6 +166,8 @@ export interface BubbleSlotsInput {
   /** 气泡停留时长（ms）：来自配置 `bubbleDurationSec`，由卡片用 shared 的 bubbleDurationMs 解出。
    *  缺省 / 非法（≤0、非有限数）时回落到 {@link BUBBLE_DURATION_MS}。 */
   bubbleDurationMs?: number;
+  /** 最近一次环境结果；只有 petId 与本宠物相符时容器才会传。 */
+  env: EnvState | null;
 }
 
 /** 气泡单槽对外的读写面。 */
@@ -165,6 +179,8 @@ export interface BubbleSlots {
    *   缺省（自动轮询、右键菜单）不动这个标记，避免刷新结果到达时把刚顶起来的余额又让回去。
    */
   showBalance(options?: { force?: boolean }): void;
+  /** 点亮环境气泡，重置停留计时。 */
+  showEnv(): void;
   /** 点余额气泡翻页，并重置停留计时。 */
   cycleBalance(): void;
   /** 点亮说话气泡；duration 为 0 时不改动当前气泡，undefined 用默认时长。 */
@@ -199,6 +215,7 @@ export interface BubbleSlots {
 export function createBubbleSlots(rt: BubbleSlotsRuntime, components: BubbleComponents) {
   const { h, useState, useRef, useEffect } = rt;
   const BalanceBubble = components.balanceBubble;
+  const EnvBubble = components.envBubble;
   const TodoBubble = components.todoBubble;
   const WhisperBubble = components.whisperBubble;
 
@@ -216,6 +233,9 @@ export function createBubbleSlots(rt: BubbleSlotsRuntime, components: BubbleComp
     // 这一轮是不是用户点出来的：只由 showBalance({force:true}) 置真，气泡收起时清掉。
     const [balanceForced, setBalanceForced] = useState(false);
     const balanceTimerRef = useRef<number | null>(null);
+    // 环境气泡：只有显隐，没有翻页（一屏放得下）。
+    const [envOn, setEnvOn] = useState(false);
+    const envTimerRef = useRef<number | null>(null);
     // 说话气泡：显隐、文本与配图（池内名与完整地址二选一）。收起时机在 bubbleHoldRef：
     // 语音合成期间挂起计时，播完再留一小段尾巴（见 shared/bubble-hold）。
     const [whisperOn, setWhisperOn] = useState(false);
@@ -237,10 +257,11 @@ export function createBubbleSlots(rt: BubbleSlotsRuntime, components: BubbleComp
     // 订阅是模块级单例：卸载时必须退订，否则旧卡片会被后续状态推送重渲染
     useEffect(() => subscribeVoiceState(setVoiceState), []);
 
-    // 卸载后不再 setState：三个计时器都在这里清。
+    // 卸载后不再 setState：四个计时器都在这里清。
     useEffect(
       () => () => {
         if (balanceTimerRef.current !== null) window.clearTimeout(balanceTimerRef.current);
+        if (envTimerRef.current !== null) window.clearTimeout(envTimerRef.current);
         if (whisperTimerRef.current !== null) window.clearTimeout(whisperTimerRef.current);
         if (workTimerRef.current !== null) window.clearTimeout(workTimerRef.current);
       },
@@ -262,6 +283,16 @@ export function createBubbleSlots(rt: BubbleSlotsRuntime, components: BubbleComp
       setBalancePage((page) => (page + 1) % pages);
       // 重新计时：在停留时长的尾巴上点开才剩一两秒，看不清下一页。
       armBalanceTimeout();
+    };
+
+    /** 环境气泡：点一次亮一次，停留时长与余额相同；重复触发先清旧定时器。 */
+    const showEnv = () => {
+      setEnvOn(true);
+      if (envTimerRef.current !== null) window.clearTimeout(envTimerRef.current);
+      envTimerRef.current = window.setTimeout(() => {
+        envTimerRef.current = null;
+        setEnvOn(false);
+      }, BUBBLE_DURATION_MS);
     };
 
     /** 推进说话气泡的收起计划，并按新计划重排计时器。 */
@@ -364,8 +395,13 @@ export function createBubbleSlots(rt: BubbleSlotsRuntime, components: BubbleComp
         balanceAvailable: input.balance !== null,
         balanceEnabled: input.balanceEnabled,
         balanceManual: input.balanceManual,
+        envOn,
+        envAvailable: input.env !== null,
       });
       if (slot === 'todo') return h(TodoBubble, { on: todoOn, onClose: hideTodo });
+      if (slot === 'env') {
+        return input.env === null ? null : h(EnvBubble, { state: input.env, on: envOn });
+      }
       if (slot === 'balance') {
         return input.balance === null
           ? null
@@ -408,6 +444,7 @@ export function createBubbleSlots(rt: BubbleSlotsRuntime, components: BubbleComp
       node,
       resetWork,
       showBalance,
+      showEnv,
       showTodo,
       showWhisper,
       toggleTodo,

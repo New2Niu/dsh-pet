@@ -8,6 +8,7 @@ import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { injectPetCss } from './css.ts';
+import { PET_ALPHA_FIX_ENABLED } from '../../shared/constants.ts';
 
 /** 假元素：只实现注入路径真正用到的那几样。 */
 interface FakeElement {
@@ -116,6 +117,7 @@ function injectedCss(dom: FakeDocument): string {
 
 describe('injectPetCss', () => {
   test('滤镜 SVG 固定定位到原点且零尺寸，不参与宿主布局', () => {
+    if (!PET_ALPHA_FIX_ENABLED) return; // 共享开关默认关闭：滤镜不注入，本条只在开启时有效
     withFakeDom((dom) => {
       injectPetCss();
 
@@ -133,6 +135,7 @@ describe('injectPetCss', () => {
   });
 
   test('滤镜定义仍在文档里，id 与视频的 filter 引用一致', () => {
+    if (!PET_ALPHA_FIX_ENABLED) return; // 同上
     withFakeDom((dom) => {
       injectPetCss();
 
@@ -162,6 +165,7 @@ describe('injectPetCss', () => {
   });
 
   test('重复注入只留一份样式表与一个滤镜节点', () => {
+    if (!PET_ALPHA_FIX_ENABLED) return; // 同上
     withFakeDom((dom) => {
       injectPetCss();
       injectPetCss();
