@@ -33,7 +33,10 @@ export function createDeepseekAsrProvider(deps: { resolveKey: ResolveKey }): Spe
       if (!key) throw new SpeechUnavailableError('DEEPSEEK_API_KEY is not configured');
       const form = new FormData();
       // 官方按文件内容检测格式，这里的 MIME 只影响服务端选路；端侧产出的就是 WAV
-      form.append('file', new Blob([audio], { type: 'audio/wav' }), 'speech.wav');
+      // 拷一份到普通 Uint8Array 再塞 Blob：audio 的声明是 Uint8Array<ArrayBufferLike>（底层可能是
+      // SharedArrayBuffer），而 BlobPart 只收 ArrayBufferView<ArrayBuffer>——直接传会被类型挡住。
+      // 一句录音的量级，多这一次拷贝可忽略；拷的是视图里的元素，byteOffset 也照旧生效。
+      form.append('file', new Blob([new Uint8Array(audio)], { type: 'audio/wav' }), 'speech.wav');
       const res = await fetch(ASR_ENDPOINT, {
         method: 'POST',
         headers: { authorization: `Bearer ${key}` },
