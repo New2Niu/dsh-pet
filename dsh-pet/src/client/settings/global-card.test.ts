@@ -2,7 +2,7 @@
  * 全局开关卡（src/client/settings/global-card.ts）的契约测试。
  *
  * 三条契约：
- *   1. 四个开关的勾选态来自 `values`，切换回传的是配置字段名（键名错位会静默写坏别的开关）；
+ *   1. 五个开关的勾选态来自 `values`，切换回传的是配置字段名（键名错位会静默写坏别的开关）；
  *   2. 气泡停留时长是一个数字框，失焦提交回秒数（不是布尔，也不该跟开关混在同一排）；
  *   3. 忙时全部控件禁用，一次切换只回调一次。
  */
@@ -29,6 +29,7 @@ function flatten(node: unknown): Node[] {
 
 const allOff: GlobalFlags = {
   notificationsEnabled: false,
+  notifyWhenFocused: false,
   clickSoundEnabled: false,
   confineToScreen: false,
   trayEnabled: false,
@@ -37,7 +38,7 @@ const allOff: GlobalFlags = {
 /** 卡里全部 `<input>`。 */
 const inputs = (tree: unknown): Node[] => flatten(tree).filter((node) => node.tag === 'input');
 
-/** 四个勾选框，顺序即展示顺序。 */
+/** 五个勾选框，顺序即展示顺序。 */
 const boxes = (tree: unknown): Node[] => inputs(tree).filter((node) => node.props.type === 'checkbox');
 
 /** 气泡停留的秒数输入框（卡里唯一的数字框）。 */
@@ -50,7 +51,7 @@ const commitNumber = (box: Node, text: string): void => {
 };
 
 describe('GlobalCard —— 全局开关卡', () => {
-  test('四个开关都在，勾选态来自 values', () => {
+  test('五个开关都在，勾选态来自 values', () => {
     const tree = GlobalCard({
       busy: false,
       values: { ...allOff, notificationsEnabled: true, trayEnabled: true },
@@ -59,10 +60,10 @@ describe('GlobalCard —— 全局开关卡', () => {
       onChange: () => {},
     } as never);
     const found = boxes(tree);
-    assert.equal(found.length, 4);
+    assert.equal(found.length, 5);
     assert.deepEqual(
       found.map((box) => box.props.checked),
-      [true, false, false, true],
+      [true, false, false, false, true],
     );
   });
 
@@ -80,7 +81,7 @@ describe('GlobalCard —— 全局开关卡', () => {
     }
     assert.deepEqual(
       seen.map(([key]) => key),
-      ['notificationsEnabled', 'clickSoundEnabled', 'confineToScreen', 'trayEnabled'],
+      ['notificationsEnabled', 'notifyWhenFocused', 'clickSoundEnabled', 'confineToScreen', 'trayEnabled'],
     );
     assert.ok(
       seen.every(([, value]) => value === true),

@@ -139,7 +139,10 @@ export const de: Record<Key, string> = {
     'Haupt-Pets gespeichert, aber {names} konnten nicht zurückgeschrieben werden: Prüfen Sie, ob die Pack-Konfiguration gültig und das Verzeichnis beschreibbar ist.',
   notifyToggle: 'Systembenachrichtigungen',
   notifyToggleHint:
-    'System-Toasts (unten rechts auf dem Desktop) bei Abschluss einer Konversation, Fehlern, Berechtigungsanfragen und Rückfragen – nur wenn das Fenster nicht fokussiert ist.',
+    'System-Toasts (unten rechts auf dem Desktop) bei Abschluss einer Konversation, Fehlern, Berechtigungsanfragen und Rückfragen. Standardmäßig nur, wenn das Fenster nicht fokussiert ist.',
+  notifyWhenFocusedToggle: 'Auch bei Fokus benachrichtigen',
+  notifyWhenFocusedToggleHint:
+    'Zeigt Toasts und liest Arbeitsstatus-Zeilen auch dann vor, wenn diese Seite sichtbar und das Fenster fokussiert ist. Standardmäßig aus – einschalten, wenn Abschlüsse und Fehler auch beim Hinsehen nicht verloren gehen sollen.',
   bubbleDuration: 'Sprechblasen-Dauer (s)',
   bubbleDurationHint:
     'Wie lange eine Sprechblase sichtbar bleibt, bevor sie verschwindet (ganze Sekunden, 1-3600, Standard 5). Gilt für Flüstern, Chat, Guthaben und Aufgaben-Hinweise; eine von der API gesetzte Dauer hat Vorrang.',
@@ -177,9 +180,22 @@ export const de: Record<Key, string> = {
   voiceNotifyEnabledHint:
     'Spricht eine konfigurierte Arbeitsstatus-Zeile, wenn eine Aufgabe abgeschlossen ist, fehlschlägt oder auf Ihre Bestätigung wartet. Wie Systembenachrichtigungen wird nur gesprochen, während Sie nicht auf dieser Seite sind (weggewechselt, ohne Fokus, minimiert) – keine Unterbrechung, während Sie auf den Bildschirm schauen. Nur die konfigurierte Zeile wird gesprochen, nie das Aufgabendetail. Standardmäßig aus.',
   voiceNameLabel: 'Stimme',
+  voiceNameHint:
+    'Welche Stimme den Text liest. Stimmen stammen von der Synthese-Implementierung; weitere erscheinen mit weiteren Implementierungen.',
+  speechProviderLabel: 'Spracherkennung',
+  speechProviderHint:
+    'Welche Implementierung die Aufnahme transkribiert. Mehrere Optionen erscheinen nur mit installiertem Spracheingabe-Plugin; die Auswahl wird gespeichert, ein fehlender Anbieter führt zu einem Fehler statt zu einem stillen Wechsel.',
   voiceVolumeLabel: 'Lautstärke',
   voiceVolumeHint:
     'Wiedergabelautstärke als Dezimalzahl 0–1: 1 ist die maximale Lautstärke (100 %), 0 ist stumm. Ändert nur die Lautheit und synthetisiert kein Audio neu, kostet also nichts extra. Alle vier Arten von Sprachausgabe teilen sich diese eine Lautstärke.',
+  environmentTitle: 'Umgebung und Standort',
+  environmentHint: 'Für welche Stadt das Wetter abgefragt wird. Änderungen werden mit „Speichern“ geschrieben.',
+  environmentCityLabel: 'Stadt',
+  environmentCityHint: 'Stadtnamen eintragen – kurz oder amtlich vollständig.',
+  environmentCityPlaceholder: 'Leer = automatisch',
+  environmentDetect: 'Erkennen',
+  environmentDetected: 'Eingesetzt: {city}',
+  environmentDetectFailed: 'Erkennung fehlgeschlagen – Stadt bitte manuell eintragen',
   physicsTitle: 'Physik (Zieh- und Wurfgefühl)',
   physicsHint:
     'Globaler Standard für alle Pets (ein Pet-Pack kann ihn in seiner Art-Datei überschreiben); wird beim „Speichern" in die Benutzerkonfiguration geschrieben (kein sofortiges Schreiben). Im Browser sofort wirksam, im Desktop-Modus, sobald das Speichern die Pet-Fenster neu lädt.',

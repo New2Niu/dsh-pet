@@ -156,6 +156,8 @@ function bubbleMsOf(pet) {
 // 点击桌宠请宿主刷新余额的最短间隔（与浏览器同值）：点宠物是高频动作，每次点都打一次服务商
 // 接口既慢又可能被限流；这期间照旧用已有读数答复。
 const BALANCE_CLICK_GAP_MS = 60 * 1000;
+// 说话气泡戳破动画时长（ms）：与 index.html 的 popOut 同值，动画播完才真正收起气泡（与浏览器 WHISPER_POP_MS 一致）
+const WHISPER_POP_MS = 420;
 // 余额气泡换内容前的等待（ms）：与 .pet-bubble 的 opacity 过渡同为 .25s，淡出走完再换，
 // 否则内容会在半透明时被替换 = 看得见的硬切（与浏览器 bubble.ts 同值）
 const BALANCE_FADE_MS = 250;
